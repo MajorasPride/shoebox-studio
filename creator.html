@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Shoebox Creator</title>
+<!-- Creator Mode (T034). The owner's page for adding new default things to Shoebox Studio for every player.
+     Not linked from the game. It only changes this browser: nothing reaches players until a content pack is committed
+     to the repo as content/default-pack.json. See HANDOFF.md "Creator Mode". -->
+<style>
+:root{--wood:#7a5236;--wood2:#5d3d27;--paper:#fbf6ea;--paper2:#efe4cc;--ink:#3b2f2a;--red:#d9463e;--green:#4f9a4a;--blue:#4f8fdc;--line:rgba(59,47,42,.18)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--wood2);color:var(--ink);font:15px/1.4 ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{background:repeating-linear-gradient(90deg,#6b4630 0 22px,#714a33 22px 44px)}
+header{position:sticky;top:0;z-index:5;background:var(--wood2);color:var(--paper);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+header h1{font-size:18px;margin:0;flex:1 1 auto;letter-spacing:.5px}
+header h1 small{display:block;font-size:12px;font-weight:600;opacity:.75;letter-spacing:0}
+main{max-width:1100px;margin:0 auto;padding:14px 16px 80px;display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:900px){main{grid-template-columns:1fr 1fr}#packCard{grid-column:1/-1}}
+.card{background:var(--paper);border-radius:10px;padding:14px;box-shadow:0 3px 0 rgba(0,0,0,.25);transform:rotate(-.2deg)}
+.card:nth-child(2n){transform:rotate(.2deg)}
+.card h2{margin:0 0 6px;font-size:17px}
+.card p.note{margin:4px 0 10px;font-size:13px;opacity:.8}
+button,.btn{appearance:none;border:0;border-radius:8px;padding:9px 12px;font:700 14px ui-rounded,system-ui,sans-serif;background:var(--paper2);color:var(--ink);cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.2);transition:transform .12s,filter .12s}
+button:hover{filter:brightness(1.05)}button:active{transform:translateY(2px);box-shadow:none}
+button.go{background:var(--green);color:#fff}button.bad{background:var(--red);color:#fff}button.blue{background:var(--blue);color:#fff}
+button.sm{padding:6px 9px;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+header button{background:#f6e7a6}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;max-height:340px;overflow:auto;padding:2px}
+.pc{background:#fff;border:2px solid transparent;border-radius:8px;padding:5px;text-align:center;font-size:12px;cursor:pointer;transition:border-color .12s,transform .12s}
+.pc:hover{transform:translateY(-2px)}.pc.on{border-color:var(--blue)}
+.pc canvas{width:72px;height:72px;display:block;margin:0 auto 3px}
+.pc span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc small{opacity:.6}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 3px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:8px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--ink);font:14px ui-rounded,system-ui,sans-serif}
+textarea{min-height:58px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chk{display:flex;gap:6px;align-items:center;font-weight:600;font-size:14px;margin:8px 0}
+.pick{display:flex;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:6px;border:1px dashed var(--line)}
+.pick canvas{width:64px;height:64px;flex:0 0 auto}
+.pick span{flex:1;font-size:13px}
+.step{background:#fff;border-radius:8px;padding:8px;margin:8px 0;border-left:4px solid var(--blue)}
+.step .row{margin-top:6px}
+.ent{display:flex;gap:10px;align-items:center;background:#fff;border-radius:8px;padding:6px 8px;margin:6px 0;animation:in .25s ease}
+.ent canvas{width:48px;height:48px;flex:0 0 auto}
+.ent div{flex:1;min-width:0}.ent b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ent small{opacity:.7}
+.empty{opacity:.65;font-size:14px;padding:8px 0}
+.tag{display:inline-block;background:var(--paper2);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;margin-right:4px}
+#frame{position:fixed;inset:0;z-index:20;background:#000;display:none;flex-direction:column}
+#frame.on{display:flex}
+#frame .bar{background:var(--wood2);color:var(--paper);padding:8px 12px;display:flex;gap:10px;align-items:center}
+#frame .bar b{flex:1}
+#frame iframe{flex:1;border:0;width:100%;background:#000}
+#toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,40px);opacity:0;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:9px;font-weight:700;z-index:30;transition:all .25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.on{transform:translate(-50%,0);opacity:1}
+#out{display:none;margin-top:8px}
+#out.on{display:block;animation:in .25s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>✂️ Shoebox Creator<small>Add new default things to Shoebox Studio for every new player</small></h1>
+  <button id="bTry" class="sm">▶ Try it in the game</button>
+  <button id="bExp" class="sm">⬇ Export content pack</button>
+  <button id="bImp" class="sm">⬆ Import pack</button>
+</header>
+<main>
+  <section class="card" id="piecesCard">
+    <h2>1. Pieces</h2>
+    <p class="note">Make a piece in the game (School Desk, Pixel UI Kit, Toy Box), then pick it here. Pieces come from the Toy Box in this browser, or from a Shoebox file you import.</p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="blue" id="bGame">🎨 Open the game to make a piece</button>
+      <button id="bFile">📂 Import a Shoebox file</button>
+      <button id="bRef" class="sm">↻ Refresh</button>
+    </div>
+    <input type="text" id="pq" placeholder="Search pieces">
+    <div class="grid" id="pieces" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card" id="editCard">
+    <h2 id="eTitle">2. Make a new thing</h2>
+    <label for="eKind">What is it?</label>
+    <select id="eKind">
+      <option value="item">🧸 Item (goes in every Toy Box)</option>
+      <option value="town">🏡 Town piece (Toy Box, and can stand in the showcase town)</option>
+      <option value="building">🏪 Building (in Little Town, with a door and a room)</option>
+      <option value="shop">🛒 Shop stock (on a shop's shelves, with a price)</option>
+      <option value="lesson">📘 Lesson (Art Class, steps with pictures)</option>
+    </select>
+    <label for="eName">Name</label>
+    <input type="text" id="eName" maxlength="24" placeholder="Name">
+    <label id="picL">Picture</label>
+    <div class="pick" id="ePick"><canvas width="128" height="128"></canvas><span>Tap a piece on the left to use it.</span><button class="sm" id="ePickClr">Clear</button></div>
+
+    <div id="fItem">
+      <div class="two">
+        <div><label for="eBeh">How it acts in levels</label><select id="eBeh"></select></div>
+        <div><label for="eAct">What it does in town</label><select id="eAct"></select></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="ePass"> You can walk through it</label>
+      <label class="chk"><input type="checkbox" id="eShow"> Also stand it in the showcase town (new saves)</label>
+      <div class="two" id="eShowXY"><div><label for="eX">Across (60 to 1540)</label><input type="number" id="eX" value="800"></div><div><label for="eY">Down (60 to 1060)</label><input type="number" id="eY" value="560"></div></div>
+    </div>
+    <div id="fBld">
+      <label for="eBw">Width in town (80 to 420)</label><input type="number" id="eBw" value="180">
+      <div class="two">
+        <div><label for="eCounter">Counter name inside</label><input type="text" id="eCounter" maxlength="24" placeholder="Counter"></div>
+        <div><label for="eSub">Counter note</label><input type="text" id="eSub" maxlength="30" placeholder="Coming soon"></div>
+      </div>
+      <p class="note">The building gets a door and a room with a counter. Shop stock you add for it shows on the counter.</p>
+    </div>
+    <div id="fShop">
+      <label for="eShop">Which shop</label><select id="eShop"></select>
+    </div>
+    <div id="fCommon">
+      <div class="two">
+        <div><label for="eMed">Medium tag</label><select id="eMed"></select></div>
+        <div><label for="ePrice">Price (coins, for the shops update)</label><input type="number" id="ePrice" value="0" min="0"></div>
+      </div>
+    </div>
+    <div id="fLes">
+      <div class="two">
+        <div><label for="eBranch">Art Class branch</label><select id="eBranch">
+          <option value="draw">✏️ Drawing</option><option value="paper">📃 Paper and folding</option><option value="color">🎨 Colour</option><option value="design">📐 Design</option><option value="pack">⭐ New lessons</option></select></div>
+        <div><label for="eLsub">Short line</label><input type="text" id="eLsub" maxlength="40" placeholder="A new lesson"></div>
+      </div>
+      <p class="note">The picture above is the finished picture. Each step can have its own picture: tap "Use picked piece" on a step after picking a piece.</p>
+      <div id="steps"></div>
+      <button class="sm" id="bStep">＋ Add a step</button>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="go" id="bSave">✔ Add to the pack</button>
+      <button id="bNew" class="sm">New</button>
+    </div>
+  </section>
+
+  <section class="card" id="packCard">
+    <h2>3. The content pack</h2>
+    <p class="note">Everything here ships to every new player once the pack is published. Export it, put content-pack.json in the Shoebox Drive folder and write "content pack ready" in the Inbox. Your work is kept in this browser as you go.</p>
+    <div id="ents"></div>
+    <div id="out"><label for="outT">Copy this if the download does not start</label><textarea id="outT" readonly style="min-height:120px"></textarea></div>
+  </section>
+</main>
+<div id="frame"><div class="bar"><b>Shoebox Studio</b><span style="font-size:12px;opacity:.8">Save your piece to the Toy Box, then come back</span><button id="bBack" class="sm">⬅ Back to the Creator</button></div><iframe id="gameF" title="Shoebox Studio"></iframe></div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json,text/plain" class="hide">
+<script>
+'use strict';
+/* ---------- storage: same browser storage as the game (same site), own keys for the creator ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem('craftloft_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('craftloft_'+k,JSON.stringify(v));return true}catch(e){return false}}};
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let tT=0;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('on'),2400)}
+/* lists the game uses (keep in step with index.html: BEH, TACT, MEDIA) */
+const BEH={solid:'🧱 Solid',scenery:'🎨 Scenery',bouncy:'🦘 Bouncy',collect:'🔘 Collect',ouch:'💥 Ouch'};
+const TACT={none:'◻️ Just sits',vehicle:'🚗 Drives',light:'💡 Lights up',door:'🚪 Door'};
+const MEDIA={'':'None',pencil:'✏️ Pencil',cpencil:'🌈 Coloured pencils',marker:'🖊️ Markers',crayon:'🖍️ Crayons',water:'💧 Watercolour',poster:'🎨 Poster paint',charcoal:'⚫ Charcoal',chalk:'☁️ Chalk pastels',oil:'🧈 Oil pastels',gel:'🖋️ Gel pen',glitter:'✨ Glitter pen',glow:'🌟 Glow pen'};
+const TABS={'':'(no tab)',paper:'📄 Paper',hand:'✋ Move',draw:'✏️ Draw',cut:'✂️ Cut',fold:'📃 Fold',stick:'🧴 Stick',done:'🧸 Toy box'};
+const KIND={item:'🧸 Item',town:'🏡 Town piece',building:'🏪 Building',shop:'🛒 Shop stock',lesson:'📘 Lesson'};
+const opts=(sel,o)=>{sel.innerHTML=Object.keys(o).map(k=>'<option value="'+k+'">'+esc(o[k])+'</option>').join('')};
+opts($('#eBeh'),BEH);opts($('#eAct'),TACT);opts($('#eMed'),MEDIA);
+
+/* ---------- pieces ---------- */
+let IMPORTED=LS.get('creator_imported',[]),PIECES=[],PICK=null;
+function okToy(t){return t&&typeof t.id==='string'&&Array.isArray(t.parts)&&t.parts.length&&t.parts.every(p=>p&&typeof p.src==='string'&&/^data:image\/(png|webp|jpeg);base64,/.test(p.src))&&t.w>0&&t.h>0}
+function loadPieces(){const toys=LS.get('toys',[])||[],lib=LS.get('library',null),names={};if(lib&&Array.isArray(lib.assets))lib.assets.forEach(a=>{if(a&&a.ref)names[a.ref]=a.name});
+  const seen=new Set();PIECES=[];
+  toys.filter(okToy).forEach(t=>{if(seen.has(t.id))return;seen.add(t.id);PIECES.push({t,src:/^(starter_|show_|ex_)/.test(t.id)?'Built-in':/^cp_/.test(t.id)?'Pack':'Toy Box',name:names[t.id]||t.name})});
+  IMPORTED.filter(okToy).forEach(t=>{const k='imp:'+t.id;if(seen.has(k))return;seen.add(k);PIECES.push({t,src:'Imported',name:t.name})});
+  /* his own pieces first */
+  const rank={'Toy Box':0,Imported:1,Pack:2,'Built-in':3};PIECES.sort((a,b)=>rank[a.src]-rank[b.src]);renderPieces()}
+const IMG={};function img(src){if(!IMG[src]){const i=new Image();i.src=src;IMG[src]=i}return IMG[src]}
+/* draw a toy the way the game does at rest (no swing: every part sits at its own x, y) */
+function drawToyTo(cv,t){const x=cv.getContext('2d'),W=cv.width,H=cv.height;x.clearRect(0,0,W,H);if(!t)return;const parts=t.parts.map((p,i)=>({p,i})).sort((a,b)=>(a.p.z||0)-(b.p.z||0)),ims=parts.map(q=>img(q.p.src));
+  const go=()=>{if(ims.some(i=>!i.complete)){setTimeout(go,80);return}x.clearRect(0,0,W,H);const sc=Math.min(W*.9/t.w,H*.9/t.h);x.save();x.translate((W-t.w*sc)/2,(H-t.h*sc)/2);x.scale(sc,sc);parts.forEach((q,j)=>{try{x.drawImage(ims[j],q.p.x||0,q.p.y||0,q.p.w,q.p.h)}catch(e){}});x.restore()};go()}
+function renderPieces(){const q=$('#pq').value.trim().toLowerCase(),box=$('#pieces');box.innerHTML='';const L=PIECES.filter(p=>!q||String(p.name).toLowerCase().includes(q));
+  if(!L.length){box.innerHTML='<div class="empty">No pieces yet. Open the game, make something at the School Desk and save it to the Toy Box.</div>';return}
+  L.slice(0,300).forEach(p=>{const d=document.createElement('div');d.className='pc'+(PICK&&PICK.t===p.t?' on':'');d.innerHTML='<canvas width="144" height="144"></canvas><span>'+esc(p.name)+'</span><small>'+p.src+'</small>';drawToyTo(d.querySelector('canvas'),p.t);
+    d.onclick=()=>{PICK=p;document.querySelectorAll('.pc.on').forEach(x=>x.classList.remove('on'));d.classList.add('on');setPic(p.t);toast('Picked '+p.name)};box.append(d)})}
+$('#pq').oninput=renderPieces;$('#bRef').onclick=()=>{loadPieces();toast('Pieces refreshed')};
+/* the game in a frame (same site, so its Toy Box is this browser's Toy Box) */
+$('#bGame').onclick=()=>{const f=$('#gameF');if(!f.src||/pack=try/.test(f.src))f.src='index.html';$('#frame').classList.add('on')};
+$('#bBack').onclick=()=>{$('#frame').classList.remove('on');loadPieces()};
+/* files: a Toy Box export (craftloft-library), an art pack, or a content pack */
+let FILEMODE='pieces';
+$('#bFile').onclick=()=>{FILEMODE='pieces';$('#fileIn').click()};$('#bImp').onclick=()=>{FILEMODE='pack';$('#fileIn').click()};
+$('#fileIn').onchange=()=>{const f=$('#fileIn').files[0];$('#fileIn').value='';if(!f)return;if(f.size>40e6){toast('That file is too big');return}const r=new FileReader();r.onload=()=>{let o;try{o=JSON.parse(String(r.result))}catch(e){toast('That is not a Shoebox file');return}FILEMODE==='pack'?importPack(o):importPieces(o)};r.readAsText(f)};
+function importPieces(o){let L=[];if(o&&o.format==='shoebox-content-pack'){importPack(o);return}
+  if(o&&Array.isArray(o.toys))L=o.toys;else if(o&&o.swaps)L=Object.values(o.swaps);else if(okToy(o))L=[o];L=L.filter(okToy);if(!L.length){toast('No pieces in that file');return}
+  const have=new Set(IMPORTED.map(t=>t.id));L.forEach(t=>{if(!have.has(t.id))IMPORTED.push(t)});if(!LS.set('creator_imported',IMPORTED)){toast('Storage is full');return}loadPieces();toast(L.length+' piece'+(L.length===1?'':'s')+' imported')}
+
+/* ---------- the pack ---------- */
+let PACK=LS.get('creator_draft',null);if(!PACK||!Array.isArray(PACK.entries))PACK={format:'shoebox-content-pack',version:1,name:'Shoebox default content',entries:[]};
+let EDIT=null,PIC=null,STEPS=[];
+const saveDraft=()=>{if(!LS.set('creator_draft',PACK))toast('Storage is full: export your pack now')};
+/* a clean copy of a toy for the pack: only what the game reads */
+function packToy(t){return t?{id:String(t.id).slice(0,40),name:String(t.name||'Piece').slice(0,24),w:t.w,h:t.h,beh:t.beh,parts:t.parts.map(p=>({src:p.src,x:p.x||0,y:p.y||0,w:p.w,h:p.h,parent:typeof p.parent==='number'?p.parent:-1,px:p.px||0,py:p.py||0,z:p.z||0})),...(t.sheet?{sheet:t.sheet}:{}),...(t.side?{side:t.side}:{})}:null}
+function setPic(t){if(EDIT_STEP!=null){STEPS[EDIT_STEP].toy=packToy(t);EDIT_STEP=null;renderSteps();return}PIC=packToy(t);const cv=$('#ePick canvas');drawToyTo(cv,PIC);$('#ePick span').textContent=PIC?PIC.name:'Tap a piece on the left to use it.';if(PIC&&!$('#eName').value)$('#eName').value=PIC.name}
+let EDIT_STEP=null;
+$('#ePickClr').onclick=()=>{PIC=null;drawToyTo($('#ePick canvas'),null);$('#ePick span').textContent='Tap a piece on the left to use it.'};
+function shopOpts(cur){const o={supply:'Supply Store'};PACK.entries.filter(e=>e.kind==='building').forEach(e=>o['cp_'+e.key]=e.name);opts($('#eShop'),o);if(cur&&o[cur])$('#eShop').value=cur}
+function showKind(){const k=$('#eKind').value;$('#fItem').classList.toggle('hide',!(k==='item'||k==='town'));$('#fBld').classList.toggle('hide',k!=='building');$('#fShop').classList.toggle('hide',k!=='shop');
+  $('#fCommon').classList.toggle('hide',k==='building'||k==='lesson');$('#fLes').classList.toggle('hide',k!=='lesson');$('#picL').textContent=k==='lesson'?'Finished picture':k==='building'?'Front of the building':'Picture';
+  $('#eShowXY').classList.toggle('hide',!$('#eShow').checked);if(k==='shop')shopOpts($('#eShop').value);if(k==='lesson'&&!STEPS.length){STEPS=[{t:'',c:'paper',toy:null}];renderSteps()}}
+$('#eKind').onchange=showKind;$('#eShow').onchange=showKind;
+function renderSteps(){const box=$('#steps');box.innerHTML='';STEPS.forEach((s,i)=>{const d=document.createElement('div');d.className='step';
+  d.innerHTML='<b>Step '+(i+1)+'</b><textarea maxlength="300" placeholder="What to do">'+esc(s.t)+'</textarea><div class="row"><select style="width:auto"></select><canvas width="96" height="96" style="width:44px;height:44px;background:#fbf8f0;border-radius:6px"></canvas><button class="sm" data-a="pic">'+(EDIT_STEP===i?'Now tap a piece':'Use picked piece')+'</button><button class="sm" data-a="nopic">No picture</button><button class="sm" data-a="up">▲</button><button class="sm" data-a="dn">▼</button><button class="sm bad" data-a="del">✕</button></div>';
+  const sel=d.querySelector('select');opts(sel,TABS);sel.value=s.c||'';sel.onchange=()=>s.c=sel.value;d.querySelector('textarea').oninput=e=>s.t=e.target.value;drawToyTo(d.querySelector('canvas'),s.toy);
+  d.querySelectorAll('button').forEach(b=>b.onclick=()=>{const a=b.dataset.a;if(a==='pic'){if(PICK){s.toy=packToy(PICK.t);renderSteps()}else{EDIT_STEP=i;renderSteps();toast('Tap a piece on the left')}}else if(a==='nopic'){s.toy=null;renderSteps()}else if(a==='up'&&i>0){[STEPS[i-1],STEPS[i]]=[STEPS[i],STEPS[i-1]];renderSteps()}else if(a==='dn'&&i<STEPS.length-1){[STEPS[i+1],STEPS[i]]=[STEPS[i],STEPS[i+1]];renderSteps()}else if(a==='del'){STEPS.splice(i,1);renderSteps()}});box.append(d)})}
+$('#bStep').onclick=()=>{STEPS.push({t:'',c:'',toy:null});renderSteps()};
+const slug=n=>String(n||'thing').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,24)||'thing';
+function uniqKey(kind,name,own){let b=slug(name),k=b,i=2;while(PACK.entries.some(e=>e!==own&&e.kind===kind&&e.key===k))k=b+'_'+i++;return k}
+function clearForm(){EDIT=null;PIC=null;STEPS=[];EDIT_STEP=null;$('#eTitle').textContent='2. Make a new thing';$('#bSave').textContent='✔ Add to the pack';$('#eName').value='';$('#eBeh').value='solid';$('#eAct').value='none';$('#ePass').checked=false;$('#eShow').checked=false;$('#eX').value=800;$('#eY').value=560;$('#eBw').value=180;$('#eCounter').value='';$('#eSub').value='';$('#eMed').value='';$('#ePrice').value=0;$('#eLsub').value='';$('#eBranch').value='pack';drawToyTo($('#ePick canvas'),null);$('#ePick span').textContent='Tap a piece on the left to use it.';showKind();renderSteps()}
+$('#bNew').onclick=clearForm;
+const nv=(id,d,a,b)=>{const v=parseFloat($(id).value);return isFinite(v)?Math.min(b,Math.max(a,v)):d};
+$('#bSave').onclick=()=>{const kind=$('#eKind').value,name=$('#eName').value.trim().slice(0,24);if(!name){toast('Give it a name');return}if(!PIC&&kind!=='lesson'){toast('Pick a picture first');return}
+  const e={kind,name,key:EDIT&&EDIT.kind===kind?EDIT.key:uniqKey(kind,name,EDIT),toy:PIC};
+  if(kind==='item'||kind==='town'){e.beh=$('#eBeh').value;e.act=$('#eAct').value;if($('#ePass').checked)e.tb='pass';if($('#eShow').checked)e.show={x:nv('#eX',800,60,1540),y:nv('#eY',560,60,1060)}}
+  if(kind==='building'){e.bw=nv('#eBw',180,80,420);e.counter=$('#eCounter').value.trim()||name+' Counter';e.sub=$('#eSub').value.trim()||'Coming soon'}
+  if(kind==='shop')e.shop=$('#eShop').value;
+  if(kind!=='building'&&kind!=='lesson'){e.med=$('#eMed').value;e.price=nv('#ePrice',0,0,99999)}
+  if(kind==='lesson'){e.branch=$('#eBranch').value;e.sub=$('#eLsub').value.trim()||'A new lesson';e.steps=STEPS.filter(s=>s.t.trim()).map(s=>({t:s.t.trim().slice(0,300),c:s.c||'',toy:s.toy||null}));if(!e.steps.length){toast('Write at least one step');return}}
+  if(EDIT){PACK.entries[PACK.entries.indexOf(EDIT)]=e}else PACK.entries.push(e);saveDraft();renderEnts();toast((EDIT?'Saved ':'Added ')+name);clearForm()};
+function editEnt(e){clearForm();EDIT=e;$('#eTitle').textContent='2. Change: '+e.name;$('#bSave').textContent='✔ Save changes';$('#eKind').value=e.kind;$('#eName').value=e.name;PIC=e.toy||null;drawToyTo($('#ePick canvas'),PIC);$('#ePick span').textContent=PIC?PIC.name:'Tap a piece on the left to use it.';
+  if(e.beh)$('#eBeh').value=e.beh;if(e.act)$('#eAct').value=e.act;$('#ePass').checked=e.tb==='pass';$('#eShow').checked=!!e.show;if(e.show){$('#eX').value=e.show.x;$('#eY').value=e.show.y}
+  if(e.bw)$('#eBw').value=e.bw;$('#eCounter').value=e.counter||'';$('#eSub').value=e.kind==='building'?e.sub||'':'';$('#eMed').value=e.med||'';$('#ePrice').value=e.price||0;
+  if(e.kind==='lesson'){$('#eBranch').value=e.branch||'pack';$('#eLsub').value=e.sub||'';STEPS=JSON.parse(JSON.stringify(e.steps||[]))}showKind();if(e.kind==='shop')shopOpts(e.shop);renderSteps();$('#editCard').scrollIntoView({behavior:'smooth'})}
+function renderEnts(){const box=$('#ents');box.innerHTML='';if(!PACK.entries.length){box.innerHTML='<div class="empty">Nothing in the pack yet. Pick a piece, say what it is, then Add to the pack.</div>';return}
+  PACK.entries.forEach((e,i)=>{const d=document.createElement('div');d.className='ent';const info=e.kind==='lesson'?e.steps.length+' steps':e.kind==='building'?'Width '+e.bw:e.kind==='shop'?'Price '+(e.price||0):(e.show?'In the showcase town':'Toy Box');
+    d.innerHTML='<canvas width="96" height="96"></canvas><div><b>'+esc(e.name)+'</b><small><span class="tag">'+KIND[e.kind]+'</span>'+esc(info)+(e.med?' · '+esc(MEDIA[e.med]||e.med):'')+'</small></div><button class="sm" data-a="ed">✏️ Change</button><button class="sm bad" data-a="del">✕</button>';drawToyTo(d.querySelector('canvas'),e.toy);
+    d.querySelector('[data-a=ed]').onclick=()=>editEnt(e);d.querySelector('[data-a=del]').onclick=()=>{if(!confirm('Take '+e.name+' out of the pack?'))return;PACK.entries.splice(PACK.entries.indexOf(e),1);saveDraft();renderEnts();if(EDIT===e)clearForm()};box.append(d)})}
+function packOut(){return Object.assign({},PACK,{format:'shoebox-content-pack',version:1,made:Date.now()})}
+$('#bExp').onclick=()=>{if(!PACK.entries.length){toast('The pack is empty');return}const txt=JSON.stringify(packOut());try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download='content-pack.json';document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}catch(e){}$('#outT').value=txt;$('#out').classList.add('on');toast('Exported content-pack.json')};
+function importPack(o){if(!o||o.format!=='shoebox-content-pack'||!Array.isArray(o.entries)){toast('That is not a Shoebox content pack');return}const doIt=()=>{PACK={format:'shoebox-content-pack',version:1,name:o.name||'Shoebox default content',entries:o.entries.filter(e=>e&&KIND[e.kind])};saveDraft();renderEnts();clearForm();toast('Pack loaded: '+PACK.entries.length+' things')};
+  if(PACK.entries.length&&!confirm('Replace the pack you are working on with this one?'))return;doIt()}
+/* try the pack in the game in this browser only (index.html?pack=try). It adds the pack things to this browser's game save. */
+$('#bTry').onclick=()=>{if(!PACK.entries.length){toast('The pack is empty');return}if(!LS.set('creator_try',packOut())){toast('Storage is full');return}const f=$('#gameF');f.src='index.html?pack=try';$('#frame').classList.add('on');toast('The game is using your pack (this browser only)')};
+loadPieces();renderEnts();clearForm();
+</script>
+</body>
+</html>

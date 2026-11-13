@@ -695,6 +695,7 @@ if(!TOWN.studio)TOWN.studio={x:600,y:470};
 const HDOOR={x:27,y:18},SDOOR={x:0,y:20},BLD={house:{door:HDOOR,hw:88,top:154,scr:'house',name:'My House'},studio:{door:SDOOR,hw:112,top:196,scr:'home',name:'the Studio'},
   /* T032: shops are buildings too. Each shop is one line here (scr:'shop' + its SHOPS id) and one line in SHOPS (look, room). Its place is saved as TOWN[id]. */
   supply:{door:{x:47,y:20},hw:92,top:182,scr:'shop',shop:'supply',name:'the Supply Store'}};
+cpAddBlds();/* T034: buildings from the content pack */
 /* T032: a building that a town does not have yet gets a free spot near the road (old towns and the showcase town alike; nothing else moves) */
 function bldSpot(T,k){const b=BLD[k],roads=(T.items||[]).filter(isRoad),pad=18;let best=null,bd=1e9;
   const clear=p=>{const x0=p.x-b.hw-pad,x1=p.x+b.hw+pad,y0=p.y-b.top-pad,y1=p.y+44;
@@ -705,7 +706,7 @@ function bldSpot(T,k){const b=BLD[k],roads=(T.items||[]).filter(isRoad),pad=18;l
   return best||{x:TW.W-b.hw-60,y:b.top+80}}
 function ensureBlds(T){let ch=0;for(const k in BLD)if(!T[k]){T[k]=bldSpot(T,k);ch=1}return ch}
 if(ensureBlds(TOWN))LS.set('town',TOWN);
-const BLDDRAW=k=>k==='house'?drawTownHouse:k==='studio'?drawTownStudio:drawTownSupply;/* looked up at draw time, so Art Swap's wrapped versions are used */
+const BLDDRAW=k=>k==='house'?drawTownHouse:k==='studio'?drawTownStudio:/^cp_/.test(k)?cpBldDraw(k):drawTownSupply;/* looked up at draw time, so Art Swap's wrapped versions are used */
 function goBld(k){const b=BLD[k];if(b.shop)SHOP_ID=b.shop;go(b.scr)}
 function bldAt(w){for(const k in BLD){const p=TOWN[k],b=BLD[k];if(Math.abs(w.x-p.x)<b.hw&&w.y>p.y-b.top&&w.y<p.y+12)return k}return null}
 function houseAt(w){return bldAt(w)==='house'}
@@ -900,8 +901,9 @@ let SHOP_ID='supply';
 function mkShopRoom(id,stn){return{key:'shophero_'+id,shop:id,W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:280,y:300},tgt:null,pend:null,face:1,ph:0,near:null,stn}}
 const SHOPS={supply:{id:'supply',name:'Supply Store',room:mkShopRoom('supply',[
   {id:'sdoor',out:'supply',name:'Shop Door',sub:'Back to Little Town',x:460,y:210,wall:1,act:()=>leaveHouse('supply'),verb:'Go out to Little Town'},
-  {id:'sshelf',name:'Supply Shelves',x:128,y:210,wall:1,soon:1,tagY:-196},
+  Object.assign({id:'sshelf',name:'Supply Shelves',x:128,y:210,wall:1,tagY:-196},cpStockOpt('supply','Look at the shelves')),/* T034: pack shop stock shows here; coming soon without it */
   {id:'shop',name:'Supply Counter',sub:'Buy art supplies',x:280,y:470,soon:1,tagY:-150}])}};
+cpAddShops();/* T034 */
 const shopRoom=()=>(SHOPS[SHOP_ID]||SHOPS.supply).room;
 const isRoomScr=x=>x==='home'||x==='house'||x==='shop';
 let RM=LOB;
@@ -1145,6 +1147,7 @@ const CLASS=[
    {t:'Use three sizes: one big shape, one medium, a few small. Big is what people see first.',c:'cut',tl:'regular'},
    {t:'Leave empty space. A page that is not full is easier to read.',c:'hand',tl:'hand'},
    {t:'Your turn: make a poster for your Little Town.',c:'paper'}]}]}];
+cpAddLessons();/* T034: lessons from the content pack */
 const CLASS_SOON=['Clay and pottery','Painting: acrylic and watercolour','Crayons, markers and shading','Yarn: crochet and knitting','Sewing and fabric patterns','Cardboard and 3D paper builds','Cutting machine and vinyl (T-shirts, stickers)','Beads and jewellery','Stamps and printing','Origami','Plants and flowers','Wood and model kits','Lettering'];
 const DONE=LS.get('class',{});
 let LES=null;
@@ -1387,7 +1390,7 @@ function assetDlg(a){const toy=a.ref&&toyById(a.ref),types=toy?['piece','creatur
     q('#dE').onclick=()=>{download('shoebox-studio-'+a.name.replace(/[^\w-]+/g,'-').toLowerCase()+'.json',libPack([a]))};
     q('#dR').onclick=()=>ask('Delete '+esc(a.name)+'?',a.type==='ui'?'It leaves the Toy Box. HUDs that already use it keep their copy.':toy?'It leaves the Toy Box and any level or town that uses it. This cannot be undone.':'It leaves the Toy Box. This cannot be undone.','Delete it',()=>libDelete(a));
     if(use)q('#'+use[0]).onclick=()=>{if(toy){closeDlg();go('craft');toyToDesk(toy);C.cat='hand';C.tool='hand';renderTabs();toast('A copy is on your desk')}else if(a.type==='ui'){const p=uiClean(a.data);if(!p){toast('This part cannot be opened');return}KIT.part=p;KIT.aid=a.id;KIT.undo=[];kitDraft(true);go('kit')}else if(a.type==='tape'){vhsPlay(a)}else if(a.type==='animation'){projPlay(a)}else if(a.type==='music'){if(AU.song){songStop();q('#dM').textContent='▶ Listen'}else{songPlay(a.data,false);q('#dM').textContent='■ Stop'}}else{const L=lvlClean(a.data);if(!L){toast('This level cannot be opened');return}ask('Open '+esc(a.name)+'?','It replaces the level on your table. Save that one first if you want to keep it.','Open it',()=>{LVL=L;LS.set('level',LVL);go('level');toast(a.name+' is ready')})}}})}
-function libDelete(a){LIB=LIB.filter(x=>x!==a);if(a.ref){TOYS=TOYS.filter(t=>t.id!==a.ref);saveToys();delete SPR[a.ref]}if(KIT.aid===a.id)KIT.aid=null;saveLib();SFX.crumple(6);updBadge();if(SCR==='box')renderBox();toast(a.name+' was deleted')}
+function libDelete(a){LIB=LIB.filter(x=>x!==a);if(a.ref){cpForget(a.ref);/* T034 */TOYS=TOYS.filter(t=>t.id!==a.ref);saveToys();delete SPR[a.ref]}if(KIT.aid===a.id)KIT.aid=null;saveLib();SFX.crumple(6);updBadge();if(SCR==='box')renderBox();toast(a.name+' was deleted')}
 function libDuplicate(a){const nm=(a.name+' copy').slice(0,24),b={id:newAid(),name:nm,type:a.type,tags:(a.tags||[]).slice(),date:Date.now(),thumb:a.thumb};
   if(a.ref){const t=toyById(a.ref);if(!t)return;const nt=JSON.parse(JSON.stringify(t));nt.id='t'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36);nt.name=nm;delete nt.starter;TOYS.push(nt);if(!saveToys()){TOYS.pop();toast('Storage is full. Remove something first.');return}b.ref=nt.id;b.id='a_'+nt.id}
   else b.data=JSON.parse(JSON.stringify(a.data));LIB.push(b);if(!saveLib()){LIB.pop();if(b.ref){TOYS=TOYS.filter(t=>t.id!==b.ref);saveToys()}toast('Storage is full. Remove something first.');return}SFX.thwap();updBadge();if(SCR==='box')renderBox();toast(nm+' made')}
@@ -1570,6 +1573,7 @@ function mkShowTown(){const items=[],put=(k,x,y,o)=>{const t=toyById('show_'+k);
   put('tree',430,820);put('tree',1170,820);put('bench',620,780);put('flowers',620,862);put('flowers',960,775);put('gate',1040,870);put('sign',800,862);
   [[420,560],[1180,560],[420,1062],[1180,1062]].forEach(p=>put('lamp',p[0],p[1]));
   put('car1',500,632);put('car2',1100,932,{flip:-1});/* 12 = CARY: a car's wheels sit 12 px below the middle of the road */
+  cpShowItems(items);/* T034 */
   return{items,hero:{x:780,y:545},house:{x:930,y:500},studio:{x:600,y:470},show:1}}
 function resetShowTown(){ask('Reset to showcase town?','Little Town goes back to the showcase town: a road loop with two cars, street lights, a park and a sign. Your town now is kept as a backup. Your toy box stays as it is.','Reset town',()=>{ensureShowToys();LS.set('town_backup',{date:Date.now(),town:TOWN});const T=mkShowTown();ensureBlds(T);TOWN=T;ST.d=T;VEH.clear();ST.sel=null;ST.arm=null;LS.set('town',TOWN);libSync();buildStageUI();ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.42/ST.z;clampCam();SFX.win();toast('Showcase town is back. Your old town is saved as a backup.')})}
 
@@ -1795,7 +1799,7 @@ function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;clkTick(DT);if(OVL){
   if(SCR==='title')drawHome();else if(isRoomScr(SCR)){updLobby();if(isRoomScr(SCR))drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
   auTick();requestAnimationFrame(frame)}
 addEventListener('pagehide',()=>{clkSave();if(SCR==='town')LS.set('town',TOWN)});
-resize();loadDesk();libInit();SCR='title';showScr();updBadge();requestAnimationFrame(frame);
+resize();loadDesk();cpEnsureToys();libInit();cpLib();/* T034 */SCR='title';showScr();updBadge();requestAnimationFrame(frame);
 /* ================= v1.6b: ART MEDIUMS, PAPER STOCKS, HANDY NOTEBOOK ================= */
 /* Every medium is a brush made in code. The pencil tool draws with C.med in colour C.mcol (saved as craftloft_artbox).
    Grain mediums (coloured pencils, crayons, chalk, charcoal, oil pastels) use a tinted texture fixed to the paper, so the paper's tooth shows through.
@@ -2028,6 +2032,7 @@ const EXFRIDGE=[
 const EXAMPLES=[];
 CLASS.forEach(b=>b.lessons.forEach(l=>{if(EXL[l.id]){for(let k=0;k<=l.steps.length;k++)EXAMPLES.push({id:'ex_'+l.id+'_'+k,lesson:l.id,step:k,draw:(c,w,h)=>{c.save();c.scale(w/EXW,h/EXH);EXL[l.id](c,k);c.restore()}})}else if(EXF[l.id])EXAMPLES.push({id:'ex_'+l.id+'_0',lesson:l.id,step:0,draw:(c,w,h)=>{c.save();c.scale(w/EXW,h/EXH);EXF[l.id](c);c.restore()}})}));
 EXFRIDGE.forEach((f,i)=>EXAMPLES.push({id:'ex_'+f.key,lesson:'fridge',step:i,w:f.w,h:f.h,draw:(c,w,h)=>{c.save();c.scale(w/f.w,h/f.h);f.draw(c);c.restore()}}));
+cpAddExamples();/* T034 */
 function exFind(lesson,step){return EXAMPLES.find(e=>e.lesson===lesson&&e.step===step)}
 function exDraw(e,c,w,h){e.draw(c,w,h)}/* one place every example picture is drawn through */
 const EXC={};function exCanvas(e,w,h){const k=e.id+'_'+w+'x'+h;if(!EXC[k]){const cv=mkCanvas(w,h);exDraw(e,cv._x,w,h);EXC[k]=cv}return EXC[k]}
@@ -2065,7 +2070,7 @@ function asMeasure(fn){const S=760,c=mkCanvas(S,S,true),x=c._x;x.translate(S/2,S
 function asBox(id,fn){return AS.box[id]||(AS.box[id]=asMeasure(fn))}
 /* ---- the hooks: every slotted drawing goes through one of these ---- */
 const _asDrawToy=drawToy;
-drawToy=function(c,toy,t,swing){if(toy&&typeof toy.id==='string'&&(toy.id.startsWith('starter_')||toy.id.startsWith('show_'))){const sw=asGet(toy.id);if(sw&&sprite(sw).ready){const sc=Math.min(toy.w/sw.w,toy.h/sw.h);c.save();c.translate((toy.w-sw.w*sc)/2,toy.road?(toy.h-sw.h*sc)/2:toy.h-sw.h*sc);c.scale(sc,sc);_asDrawToy(c,sw,t,swing);c.restore();return true}}return _asDrawToy(c,toy,t,swing)};
+drawToy=function(c,toy,t,swing){if(toy&&typeof toy.id==='string'&&/^(starter_|show_|cp_|cps_)/.test(toy.id)){const sw=asGet(toy.id);/* T034: cp_ and cps_ are content pack pieces */if(sw&&sprite(sw).ready){const sc=Math.min(toy.w/sw.w,toy.h/sw.h);c.save();c.translate((toy.w-sw.w*sc)/2,toy.road?(toy.h-sw.h*sc)/2:toy.h-sw.h*sc);c.scale(sc,sc);_asDrawToy(c,sw,t,swing);c.restore();return true}}return _asDrawToy(c,toy,t,swing)};
 const AS_STN={};Object.keys(STATION_DRAW).forEach(k=>{const o=AS_STN[k]=STATION_DRAW[k];STATION_DRAW[k]=function(c){const id='stn_'+k;if(asGet(id)&&asReady(id)){const b=asBox(id,o);c.save();c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(b.x+b.w/2,3,b.w*.45,9,0,0,TAU);c.fill();c.restore();asFit(id,c,b.x,b.y,b.w,b.h);return}o(c)}});
 const _asTS=drawTownStudio,_asTH=drawTownHouse,_asTSu=drawTownSupply;
 function asBld(id,o,c,p,tag){if(!asReady(id))return false;const b=asBox(id,x=>o(x,{x:0,y:0},''));c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,b.w*.45,14,0,0,TAU);c.fill();asFit(id,c,b.x,b.y,b.w,b.h);if(tag){c.font='800 12px system-ui';c.textAlign='center';c.fillStyle='rgba(0,0,0,.55)';c.fillText(tag,0,22)}c.restore();return true}
@@ -2113,6 +2118,7 @@ function asSlots(){if(ART_SLOTS)return ART_SLOTS;const L=[],add=o=>L.push(o);
     else add({id:e.id,name:e.step?exName(e)+', step '+e.step:exName(e),group:e.step?'Lesson step pictures':'Lesson pictures',kind:'example',w:EXW,h:EXH,where:e.step?'Art Class, '+exName(e)+', the picture for step '+e.step:'Art Class, the finished picture for '+exName(e),draw:(c,w,h)=>exDraw(e,c,w,h)})});
   add({id:'vhs_cloth',name:'Cloth backdrop',group:'VHS spot',kind:'vhs',w:400,h:300,where:'The hanging cloth the VHS tapes play on',draw:(c,w,h)=>{if(!asCover('vhs_cloth',c,0,0,w,h)){c.fillStyle='#efe6d2';c.fillRect(0,0,w,h);c.fillStyle='rgba(120,90,50,.12)';for(let i=0;i<8;i++)c.fillRect(w*(i+.4)/8,0,w*.03,h)}}});
   TAPE_LABELS.forEach((lb,i)=>add({id:'vhs_label_'+i,name:lb.name+' label',group:'VHS spot',kind:'vhs',w:160,h:44,where:'Tape labels on the VHS shelf and player',draw:(c,w,h)=>drawLabel(c,{p:i},'My tape',0,0,w,h)}));
+  cpSlots(add,toyDraw);/* T034 */
   ART_SLOTS=L;return L}
 const asDone=id=>!!(AS.mine[id]||AS.ok[id]);
 function asSave(){if(!LS.set('artswap',AS.mine)){toast('Storage is full. Remove something first.');return false}LS.set('artswap_ok',AS.ok);return true}
@@ -2170,6 +2176,77 @@ function asImportDlg(){dlg('<h2>Import an art pack</h2><p>Pick a shoebox-art-pac
   d.querySelector('#dNo').onclick=()=>artSwapOpen();d.querySelector('#aP').onclick=()=>asImport(d.querySelector('#aip').value)})}
 function asImport(txt){let o;try{o=JSON.parse(txt)}catch(e){o=null}if(!o||o.format!=='shoebox-art-pack'||!o.swaps||typeof o.swaps!=='object'){toast('That is not a Shoebox Studio art pack');return}const ids=new Set(asSlots().map(s=>s.id)),inc={};for(const k in o.swaps){if(!ids.has(k))continue;const t=asClean(o.swaps[k],k);if(t)inc[k]=t}const n=Object.keys(inc).length;if(!n){toast('No art in that pack fits this game');return}const rep=Object.keys(inc).filter(k=>AS.mine[k]).length;
   ask('Import '+n+' piece'+(n===1?'':'s')+' of art?',rep?rep+' of your own swaps will be replaced by the ones in the pack.':'None of your own swaps are replaced.','Import',async()=>{const old=AS.mine;AS.mine=Object.assign({},AS.mine,inc);for(const k in inc){delete SPR[inc[k].id];await asWait(inc[k]);const sl=asSlots().find(s=>s.id===k);if(sl&&sl.kind==='ui'&&!inc[k].uipx){const px=asUiPx(inc[k],sl.pal);if(px)inc[k].uipx=px}}if(!asSave()){AS.mine=old;return}asClearCaches();AS.th={};SFX.win();toast('Imported '+n+' piece'+(n===1?'':'s')+' of art');artSwapOpen()})}
+
+/* ================= CONTENT PACK (T034) =================
+   content/default-pack.json is made with creator.html (the owner's Creator Mode page, not linked from the game).
+   It ships new default things to every player: items and town pieces (Toy Box, and the showcase town if he placed them),
+   buildings (Little Town, with a shop room inside), shop stock (shop shelves, with a price for T027) and Art Class lessons.
+   Order: the player's own stuff, then the content pack, then the code-made defaults. Pack toys have ids cp_<key>,
+   stock cps_<key>, buildings cp_<key> in BLD and SHOPS. Each one gets an Art Swap slot, so the player's own swap wins.
+   ?pack=try uses the pack that creator.html's "Try it in the game" saved in this browser (craftloft_creator_try) instead. */
+/* var, not const: these run early in the script (the showcase town, BLD, SHOPS and CLASS call them before this block is reached) */
+var _CP,CP_CHANGED,CPT;
+function cpMem(){if(!CPT)CPT={};if(!CP_CHANGED)CP_CHANGED=[]}
+function cpData(){if(_CP!==undefined)return _CP;_CP=null;let o=null;
+  try{if(/[?&]pack=try\b/.test(location.search))o=LS.get('creator_try',null)}catch(e){o=null}
+  if(!o){try{const r=new XMLHttpRequest();r.open('GET','content/default-pack.json?v='+Date.now(),false);r.send();if(r.status===200)o=JSON.parse(r.responseText)}catch(e){o=null}}
+  try{_CP=cpClean(o)}catch(e){_CP=null}return _CP}
+/* only plain checks here: this runs early in the script, before BEH, TACT and MEDIA exist */
+function cpClean(o){if(!o||o.format!=='shoebox-content-pack'||!Array.isArray(o.entries))return null;const seen=new Set(),E=[];
+  const s=(v,n)=>String(v==null?'':v).slice(0,n),n=(v,d,a,b)=>typeof v==='number'&&isFinite(v)?Math.min(b,Math.max(a,v)):d,toy=t=>t&&typeof t==='object'&&Array.isArray(t.parts)?t:null;
+  for(const e of o.entries.slice(0,400)){if(!e||!['item','town','building','shop','lesson'].includes(e.kind))continue;const key=s(e.key,32).toLowerCase().replace(/[^a-z0-9_]/g,'');if(!key||seen.has(e.kind+key))continue;seen.add(e.kind+key);
+    const c={key,kind:e.kind,name:s(e.name,24)||'New thing',toy:toy(e.toy),med:/^[a-z]{1,12}$/.test(e.med||'')?e.med:'',price:n(e.price,0,0,99999)};
+    if(e.kind==='item'||e.kind==='town'){if(!c.toy)continue;c.beh=/^[a-z]{1,12}$/.test(e.beh||'')?e.beh:(e.kind==='town'?'solid':'solid');c.act=/^[a-z]{1,12}$/.test(e.act||'')?e.act:'none';c.tb=e.tb==='pass'?'pass':'block';
+      if(e.show&&typeof e.show==='object')c.show={x:n(e.show.x,800,60,1540),y:n(e.show.y,560,60,1060)}}
+    else if(e.kind==='building'){if(!c.toy)continue;c.bw=n(e.bw,180,80,420);c.counter=s(e.counter,24)||(c.name+' Counter');c.sub=s(e.sub,30)||'Coming soon'}
+    else if(e.kind==='shop'){if(!c.toy)continue;c.shop=s(e.shop,40).replace(/[^a-z0-9_]/g,'')||'supply'}
+    else{c.branch=s(e.branch,12).replace(/[^a-z0-9_]/g,'')||'pack';c.sub=s(e.sub,40)||'A new lesson';c.steps=(Array.isArray(e.steps)?e.steps:[]).slice(0,30).map(q=>({t:s(q&&q.t,300)||'…',c:['paper','hand','draw','cut','fold','stick','done'].includes(q&&q.c)?q.c:'',toy:toy(q&&q.toy)}));if(!c.steps.length)continue}
+    E.push(c)}
+  return E.length?{name:s(o.name,40),made:n(o.made,0,0,1e14),entries:E}:null}
+function cpList(...k){const d=cpData();return d?d.entries.filter(e=>k.includes(e.kind)):[]}
+/* a pack picture as a clean toy (made when first needed, after toyClean's helpers exist) */
+function cpToy(t,id,name,e){cpMem();if(!t)return null;if(CPT[id])return CPT[id];const c=toyClean(Object.assign({},t,{id}));if(!c)return null;c.id=id;if(name)c.name=name;c.cpack=1;
+  if(e){if(BEH[e.beh])c.beh=e.beh;if(TACT[e.act]&&e.act!=='none')c.act=e.act;else delete c.act;if(e.tb==='pass')c.tb='pass';if(e.price)c.price=e.price;if(e.med)c.med={m:[e.med]};c.cpk=e.kind}
+  return CPT[id]=c}
+function cpItemToy(e){return cpToy(e.toy,'cp_'+e.key,e.name,e)}
+/* Toy Box: put the pack's items and town pieces in (or refresh them when the pack changed). A pack piece the player deleted stays deleted.
+   A pack piece that is no longer in the pack is taken out (only when a pack did load). */
+function cpEnsureToys(){cpMem();const d=cpData();if(!d)return;const gone=new Set(LS.get('cpack_gone',[])),want=new Set();let ch=false;
+  cpList('item','town').forEach(e=>{const t=cpItemToy(e);if(!t)return;want.add(t.id);if(gone.has(t.id))return;const i=TOYS.findIndex(x=>x.id===t.id),nt=JSON.parse(JSON.stringify(t));
+    if(i<0){TOYS.push(nt);ch=true;CP_CHANGED.push(t.id)}else if(TOYS[i].cpack&&JSON.stringify(TOYS[i])!==JSON.stringify(nt)){TOYS[i]=nt;delete SPR[t.id];ch=true;CP_CHANGED.push(t.id)}});
+  const n0=TOYS.length;TOYS=TOYS.filter(t=>!(t.cpack&&!want.has(t.id)));if(TOYS.length!==n0)ch=true;if(ch)saveToys()}
+function cpLib(){cpMem();if(!LIB||!cpData())return;let ch=false;LIB.forEach(a=>{if(!a.ref||!/^cp_/.test(a.ref))return;const t=toyById(a.ref);if(!t)return;
+  if(!a.tags||!a.tags.length){a.tags=['content pack',t.cpk==='town'?'town piece':'item'].concat(t.med&&t.med.m?t.med.m:[]);ch=true}if(CP_CHANGED.includes(a.ref)&&a.thumb){delete a.thumb;ch=true}});if(ch)saveLib()}
+function cpForget(id){if(!/^cp_/.test(id||''))return;const g=LS.get('cpack_gone',[]);if(!g.includes(id)){g.push(id);LS.set('cpack_gone',g)}}
+/* the showcase town (new saves and Reset to showcase town): pack pieces he placed there */
+function cpShowItems(items){cpList('item','town').forEach(e=>{if(!e.show)return;items.push({toy:'cp_'+e.key,x:e.show.x,y:e.show.y,s:1,flip:1,beh:e.beh,act:e.act||'none',tb:e.tb==='pass'||e.act==='vehicle'?'pass':'block'})})}
+/* buildings: one BLD entry each (a shop with a room inside) */
+function cpAddBlds(){cpList('building').forEach(e=>{const k='cp_'+e.key,t=e.toy,w=e.bw,h=Math.max(60,Math.round(w*(+t.h||100)/(+t.w||100)));BLD[k]={door:{x:0,y:20},hw:Math.round(w/2),top:h,scr:'shop',shop:k,name:'the '+e.name,cp:1}})}
+function cpBldRaw(k){return function(c,p,tag){const e=cpList('building').find(x=>'cp_'+x.key===k),b=BLD[k];if(!e||!b)return;const t=cpToy(e.toy,'cpb_'+e.key,e.name);if(!t)return;
+  const w=b.hw*2,sc=w/t.w;c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,w*.45,14,0,0,TAU);c.fill();c.save();c.translate(-w/2,-t.h*sc);c.scale(sc,sc);if(!_asDrawToy(c,t,0,0)){c.restore();c.fillStyle='#e0bb80';c.fillRect(-w/2,-b.top,w,b.top)}else c.restore();
+  if(tag){c.font='800 12px system-ui';c.textAlign='center';c.fillStyle='rgba(0,0,0,.55)';c.fillText(tag,0,22)}c.restore()}}
+function cpBldDraw(k){const raw=cpBldRaw(k);return function(c,p,tag){if(!asBld('bld_'+k,raw,c,p,tag))raw(c,p,tag)}}
+/* shops: each pack building gets a room with its door and a counter. Shop stock shows on the counter (Supply Store: the shelves). Buying comes with T027. */
+function cpStock(shop){return cpList('shop').filter(e=>e.shop===shop)}
+function cpStockOpt(shop,verb){return cpStock(shop).length?{act:()=>cpShelf(shop),verb}:{soon:1}}
+function cpAddShops(){cpList('building').forEach(e=>{const k='cp_'+e.key;SHOPS[k]={id:k,name:e.name,cp:1,room:mkShopRoom(k,[
+  {id:'sdoor',out:k,name:'Shop Door',sub:'Back to Little Town',x:460,y:210,wall:1,act:()=>leaveHouse(k),verb:'Go out to Little Town'},
+  Object.assign({id:'shop',name:e.counter,sub:e.sub,x:280,y:470,tagY:-150},cpStockOpt(k,'Look at what is for sale'))])}})}
+function cpShelf(shop){const L=cpStock(shop),nm=(SHOPS[shop]||{}).name||'the shop';
+  dlg('<h2>On the shelves</h2><p>Coming to '+esc(nm)+'. Buying arrives with the shops update.</p><div id="cpSt" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px"></div><div class="btns"><button id="dNo">Back</button></div>',d=>{
+    const box=d.querySelector('#cpSt');L.forEach(e=>{const t=cpToy(e.toy,'cps_'+e.key,e.name,e);if(!t)return;const q=document.createElement('div');q.style.cssText='background:#fbf6ea;border-radius:8px;padding:6px;text-align:center;color:#3b2f2a;font:700 12px system-ui';q.innerHTML='<canvas style="width:72px;height:72px"></canvas><div>'+esc(t.name)+'</div><div>'+(e.price?'🪙 '+e.price:'Free')+'</div>';box.append(q);thumb(q.querySelector('canvas'),t)});d.querySelector('#dNo').onclick=closeDlg})}
+/* lessons: into their Art Class branch (or a "New lessons" branch) */
+function cpAddLessons(){cpList('lesson').forEach(e=>{let b=CLASS.find(x=>x.id===e.branch);if(!b){b=CLASS.find(x=>x.id==='pack');if(!b){b={id:'pack',name:'⭐ New lessons',about:'New lessons, made by MajorasPride.',lessons:[]};CLASS.push(b)}}
+  b.lessons.push({id:'cp_'+e.key,name:e.name,sub:e.sub,cp:1,steps:e.steps.map(s=>s.c?{t:s.t,c:s.c}:{t:s.t})})})}
+/* lesson pictures: the finished picture is step 0, then one per step if he gave one. They are EXAMPLES, so they get Art Swap slots too. */
+function cpAddExamples(){const W0=[];cpList('lesson').forEach(e=>{const L='cp_'+e.key,pics=[e.toy].concat(e.steps.map(s=>s.toy));pics.forEach((p,k)=>{const t=cpToy(p,'cpx_'+e.key+'_'+k,e.name);if(!t)return;W0.push(t);
+  EXAMPLES.push({id:'ex_'+L+'_'+k,lesson:L,step:k,draw:(c,w,h)=>{const sc=Math.min(w/t.w,h/t.h)*.92;c.save();c.fillStyle='#fbf8f0';c.fillRect(0,0,w,h);c.translate((w-t.w*sc)/2,(h-t.h*sc)/2);c.scale(sc,sc);_asDrawToy(c,t,0,0);c.restore()}})})});
+  /* pictures load a moment later: drop any blank copies made before they were ready */
+  W0.forEach(t=>{const s=sprite(t),tk=n=>{if(s.ready){for(const k in EXC)if(k.startsWith('ex_cp_'))delete EXC[k];if(SCR==='class')renderClass()}else if(n<80)setTimeout(()=>tk(n+1),60)};tk(0)})}
+/* Art Swap slots for everything in the pack */
+function cpSlots(add,toyDraw){cpList('item','town').forEach(e=>{const t=toyById('cp_'+e.key)||cpItemToy(e);if(!t)return;add({id:t.id,name:t.name,group:'Content pack',kind:'toy',toy:t,w:t.w,h:t.h,where:e.kind==='town'?'Town piece in the Toy Box'+(e.show?' and the showcase town':''):'Toy Box piece',draw:toyDraw(t)})});
+  cpList('shop').forEach(e=>{const t=cpToy(e.toy,'cps_'+e.key,e.name,e);if(!t)return;add({id:t.id,name:t.name,group:'Content pack',kind:'toy',toy:t,w:t.w,h:t.h,where:'For sale in '+((SHOPS[e.shop]||{}).name||'a shop'),draw:toyDraw(t)})});
+  cpList('building').forEach(e=>{const k='cp_'+e.key,id='bld_'+k,raw=cpBldRaw(k),b=asBox(id,x=>raw(x,{x:0,y:0},''));add({id,name:e.name+' building',group:'Buildings in town',kind:'building',w:b.w,h:b.h,where:'Little Town, 2D and Retro 3D',draw:(c,w,h)=>{c.save();c.scale(w/b.w,h/b.h);c.translate(-b.x,-b.y);BLDDRAW(k)(c,{x:0,y:0},'');c.restore()}})})}
 
 </script>
 </body>
