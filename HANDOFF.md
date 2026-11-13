@@ -19,9 +19,10 @@ _Last updated: Nov 12, 2026_
 - **Working copies** are where small updates happen with Claude:
   - Story Loom: the private Claude artifact (https://claude.ai/artifact/PsTZ7n8XEwmmE1uL6UWTS4).
   - Beat Bop Doodle: its own repo (`beat-bop-doodle`).
-- **Shoebox Studio keeps its own copy** of each tool inside this repo (planned folders: `/story-loom/`, `/beat-bop-doodle/`). These copies only change when the owner says to **push a big update** into the game. The game is not updated all the time.
+- **Shoebox Studio keeps its own copy** of each tool inside this repo (planned folders: `/story-shelf/`, `/beat-bop-doodle/`). These copies only change when the owner says to **push a big update** into the game. The game is not updated all the time.
 - No separate public websites are needed for these tools. There is no story-loom repo, and the game copies work offline.
-- Story Loom's in-game copy is the public edition: no Ask Claude buttons, no cloud save. It's prepared but not yet added. Name for the in-game copy is still open (Story Shelf was suggested).
+- Story Loom's in-game copy is named **Story Shelf**. It's the public edition: no Ask Claude buttons, no cloud save, its own save key (`storyshelf_v1`). It's staged in `/story-shelf/` but not pushed or linked yet.
+- Story Shelf needs **lots of tutorials and worked examples** (owner, Nov 12: "we are going to be doing a lot of work on this"). It already has the 2-minute tour, the follow-along worked example "The Salt Bell" and the short example "Pip's Lanterns". Add more over time: one per tool, plus genre examples (detective, horror, multiple endings). Write original example stories only, never the owner's own stories.
 - Story Loom opens from a **bookshelf in the studio lobby**. Later, book nooks can live on the same shelf.
 - Beat Bop Doodle opens from a **retro NES-style console in the player's house**. Its "a Shoebox Studio game" title line is approved.
 - Book nooks: a later feature (tiny dioramas you make and slide between books).
@@ -32,6 +33,6 @@ _Last updated: Nov 12, 2026_
 
 ## Build list (go through with the owner before pushing)
 1. Done: rename + tagline, pushed to the public repo.
-2. Add the Story Loom public edition into `/story-loom/` + the studio bookshelf station that opens it.
+2. Add Story Shelf into `/story-shelf/` + the studio bookshelf station that opens it.
 3. Add Beat Bop Doodle into `/beat-bop-doodle/` + the "a Shoebox Studio game" line.
 4. House in Little Town, with the NES-style console that opens Beat Bop Doodle.
