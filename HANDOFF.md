@@ -9,6 +9,7 @@ _Last updated: Nov 12, 2026_
 - Small updates happen **on our end** in working copies: the private Claude artifacts, plus the `dev` branch of this repo.
 - The public game (`main` branch = the live website) only gets **big, fleshed-out updates**, and only when the owner says go.
 - Staged work waits on `dev`. It's in the repo but not on the website.
+- **Nothing goes live without the owner's final look.** Before every big update, give the owner a private preview of the whole `dev` version to play. Push to `main` only after they say go.
 
 ## Name
 - **Shoebox Studio**, tagline **Cut, Paste, Play**. Renamed from Craft Loft (and before that, Platformer Editor).
