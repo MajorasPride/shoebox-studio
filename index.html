@@ -37,6 +37,14 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #lobbyUI.on{display:flex}
 #lobbyUI button{pointer-events:auto;height:46px;padding:0 18px;border-radius:23px;font-weight:900;font-size:15px;box-shadow:0 3px 0 #0005}
 #lobGo{background:var(--yellow);display:none}
+#ovl{position:fixed;inset:0;z-index:30;display:none;flex-direction:column;background:#3e2a1e}
+#ovl.on{display:flex}
+#ovlBar{flex:none;display:flex;align-items:center;gap:8px;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;background:#caa76c;border-bottom:3px solid #8b5a3c;box-shadow:0 2px 6px #0005;z-index:1}
+#ovlBack{height:38px;padding:0 15px;border-radius:19px;background:var(--yellow);font-weight:900;font-size:14.5px;box-shadow:0 3px 0 #0005;white-space:nowrap}
+#ovlTtl{flex:1;min-width:0;font-weight:900;font-size:14px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ovlOut{flex:none;width:34px;height:34px;border-radius:17px;background:var(--paper);display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink);font-size:16px;box-shadow:0 2px 0 #0004}
+#ovlBox{flex:1;min-height:0;position:relative;background:#2b2140}
+#ovlBox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 #lobQuick{background:var(--paper);align-self:flex-end}
 #classUI{position:fixed;left:0;right:0;top:46px;bottom:0;overflow:auto;padding:8px 12px 40px;z-index:3}
 #classIn{max-width:560px;margin:0 auto}
@@ -190,6 +198,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
   <button class="tb" id="bSet" aria-label="Settings">⚙️</button>
 </div>
 <div id="lobbyUI" class="scr"><button id="lobGo"></button><button id="lobQuick">☰ Quick jump</button></div>
+<div id="ovl"><div id="ovlBar"><button id="ovlBack">◀ Back to the studio</button><div id="ovlTtl"></div><a id="ovlOut" target="_blank" rel="noopener" aria-label="Open on its own page" title="Open on its own page">↗</a></div><div id="ovlBox"></div></div>
 <div id="classUI" class="scr"><div id="classIn"></div></div>
 <div id="lesson"><div id="lesT"></div><div id="lesS"></div><div id="lesB"><button id="lesP">◀</button><span id="lesN"></span><button id="lesX">▶</button><button id="lesH">Hide</button><button id="lesQ">✕</button></div></div>
 <button id="lesPill"></button>
@@ -204,15 +213,26 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <div id="toast"></div>
 <script>
 'use strict';
-/* Shoebox Studio (was Craft Loft) v1.3 — by MajorasPride. All art, sound and music are made in code. No outside assets. */
+/* Shoebox Studio (was Craft Loft) v1.4 — by MajorasPride. All art, sound and music are made in code. No outside assets. */
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),g=cv.getContext('2d');
 let W=0,H=0,DPR=1,NOW=0,DT=0,SCR='title';
 const TAU=Math.PI*2,clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR)}
-addEventListener('resize',()=>{resize();if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(SCR==='home'){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
+addEventListener('resize',()=>{resize();if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(SCR==='home'||SCR==='house'){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
 const LS={get(k,d){try{const v=localStorage.getItem('craftloft_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('craftloft_'+k,JSON.stringify(v));return true}catch(e){return false}}};
+/* ================= BUILT-IN TOOLS (Story Shelf, Beat Bop Doodle) ================= */
+/* Each tool is its own page in a folder of this repo. openTool() shows it full screen in a frame, with a Back button on top.
+   To add a tool: put its page in a folder, add one line to TOOLS, then call openTool('id') from a station. */
+const TOOLS={shelf:{src:'story-shelf/index.html',name:'Story Shelf'},bbd:{src:'beat-bop-doodle/index.html',name:'Beat Bop Doodle'}};
+let OVL=null;
+function openTool(id){const t=TOOLS[id];if(!t||OVL)return;OVL=id;closeDlg();$('#ovlTtl').textContent=t.name;$('#ovlBack').textContent=SCR==='house'?'◀ Back to the house':'◀ Back to the studio';$('#ovlOut').href=t.src;
+  const f=document.createElement('iframe');f.title=t.name;f.setAttribute('allow','autoplay; fullscreen; clipboard-write');f.src=t.src;$('#ovlBox').append(f);$('#ovl').classList.add('on');$('#lobGo').style.display='none';setVol();
+  try{history.pushState({sbsTool:id},'')}catch(e){}}
+function closeTool(fromBack){if(!OVL)return;OVL=null;$('#ovl').classList.remove('on');$('#ovlBox').innerHTML='';setVol();RM.near=undefined;try{SFX.tick()}catch(e){}
+  if(!fromBack){try{if(history.state&&history.state.sbsTool)history.back()}catch(e){}}}
+addEventListener('popstate',()=>{if(OVL)closeTool(true)});/* the phone's Back button closes the tool too */
 const SET=Object.assign({music:true,mv:.5,sv:.8,hand:1},LS.get('settings',{}));
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 /* ---- matrices: [a,b,c,d,e,f] like canvas ---- */
@@ -252,7 +272,7 @@ const AU={c:null,rubT:0};
 function auInit(){if(AU.c){if(AU.c.state==='suspended')AU.c.resume();return}const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=AU.c=new AC();AU.sfx=c.createGain();AU.mus=c.createGain();const cp=c.createDynamicsCompressor();AU.sfx.connect(cp);AU.mus.connect(cp);cp.connect(c.destination);
   const b=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;AU.nb=b;
   const s=c.createBufferSource();s.buffer=b;s.loop=true;AU.ff=c.createBiquadFilter();AU.ff.type='bandpass';AU.fg=c.createGain();AU.fg.gain.value=0;s.connect(AU.ff);AU.ff.connect(AU.fg);AU.fg.connect(AU.sfx);s.start();setVol();startMusic()}
-function setVol(){if(!AU.c)return;AU.sfx.gain.value=SET.sv;AU.mus.gain.value=SET.music?SET.mv*.55:0}
+function setVol(){if(!AU.c)return;AU.sfx.gain.value=SET.sv;AU.mus.gain.value=SET.music&&!OVL?SET.mv*.55:0}
 function nz(o){const c=AU.c;if(!c)return;const t=c.currentTime+(o.at||0),s=c.createBufferSource();s.buffer=AU.nb;const f=c.createBiquadFilter();f.type=o.type||'bandpass';f.frequency.setValueAtTime(o.f||2000,t);if(o.f2)f.frequency.exponentialRampToValueAtTime(o.f2,t+o.d);f.Q.value=o.q||1;const gn=c.createGain();gn.gain.setValueAtTime(.0001,t);gn.gain.linearRampToValueAtTime(o.g||.4,t+(o.a||.004));gn.gain.exponentialRampToValueAtTime(.0001,t+o.d);s.connect(f);f.connect(gn);gn.connect(AU.sfx);s.start(t,Math.random()*1.5);s.stop(t+o.d+.05)}
 function tn(o){const c=AU.c;if(!c)return;const t=c.currentTime+(o.at||0),s=c.createOscillator();s.type=o.type||'sine';s.frequency.setValueAtTime(o.f,t);if(o.f2)s.frequency.exponentialRampToValueAtTime(o.f2,t+o.d);const gn=c.createGain();gn.gain.setValueAtTime(.0001,t);gn.gain.linearRampToValueAtTime(o.g||.2,t+(o.a||.004));gn.gain.exponentialRampToValueAtTime(.0001,t+o.d);s.connect(gn);gn.connect(o.mus?AU.mus:AU.sfx);s.start(t);s.stop(t+o.d+.05)}
 const SFX={
@@ -591,6 +611,19 @@ const LV={W:3200,G:560,TOP:-240,BOT:800},GW=LV.W/4,GH=(LV.BOT-LV.TOP)/4,TW={W:16
 let LVL=LS.get('level',null),TOWN=LS.get('town',null);
 if(!LVL){const it=(toy,x,y,beh)=>({toy:'starter_'+toy,x,y,s:1,flip:1,beh});LVL={start:{x:110,y:560},goal:{x:1620,y:560},items:[it('Cloud',300,150,'scenery'),it('Cloud',950,110,'scenery'),it('Paperblock',400,560,'solid'),it('Paperblock',560,560,'solid'),it('Paperblock',560,496,'solid'),it('Button',400,480,'collect'),it('Button',560,410,'collect'),it('Springpad',800,560,'bouncy'),it('Paperblock',1000,330,'solid'),it('Button',1000,250,'collect'),it('Zigzagspikes',1000,560,'ouch'),it('Greenhill',1350,560,'solid'),it('Button',1350,400,'collect')]}}
 if(!TOWN)TOWN={items:[],hero:{x:800,y:640}};
+/* The player's house stands in Little Town. Its place is saved with the town (TOWN.house), so old towns just get one added.
+   Build mode: tap it to go in, drag it to move it. Walk mode: tap it and the hero walks to the door and goes in. */
+if(!TOWN.house)TOWN.house={x:930,y:500};
+const HDOOR={x:27,y:18};
+function houseAt(w){const p=TOWN.house;return Math.abs(w.x-p.x)<88&&w.y>p.y-154&&w.y<p.y+12}
+function drawTownHouse(c,p,tag){c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,92,14,0,0,TAU);c.fill();
+  c.fillStyle='#b5523b';c.fillRect(38,-146,18,40);c.fillStyle='#8b3a28';c.fillRect(35,-150,24,7);
+  c.fillStyle='#d6a868';rr(c,-70,-94,140,94,4);c.fill();c.strokeStyle='#8b5a3c';c.lineWidth=3;c.stroke();c.strokeStyle='rgba(139,90,60,.28)';c.lineWidth=1.5;c.beginPath();for(let y=-80;y<-6;y+=13){c.moveTo(-66,y);c.lineTo(66,y)}c.stroke();
+  c.beginPath();c.moveTo(-88,-88);c.lineTo(0,-152);c.lineTo(88,-88);c.closePath();c.strokeStyle='#fff';c.lineWidth=5;c.lineJoin='round';c.stroke();c.fillStyle='#d9463e';c.fill();c.strokeStyle='rgba(120,30,25,.4)';c.lineWidth=2.5;c.setLineDash([10,7]);c.beginPath();c.moveTo(-52,-108);c.lineTo(52,-108);c.moveTo(-24,-128);c.lineTo(24,-128);c.stroke();c.setLineDash([]);
+  c.fillStyle='#fbf6ea';rr(c,-56,-66,42,36,4);c.fill();c.fillStyle='#bfe3f0';c.fillRect(-52,-62,34,28);c.fillStyle='#fbf6ea';c.fillRect(-36.5,-62,3,28);c.fillRect(-52,-49.5,34,3);c.fillStyle='#63b35d';c.fillRect(-58,-31,46,7);['#f191b3','#f5d142','#f191b3'].forEach((k,i)=>{c.fillStyle=k;c.beginPath();c.arc(-48+i*13,-33,4,0,TAU);c.fill()});
+  c.fillStyle='#6b4a34';rr(c,6,-62,42,62,5);c.fill();c.fillStyle='#63b35d';rr(c,10,-58,34,58,3);c.fill();c.fillStyle='#bfe3f0';c.beginPath();c.arc(27,-40,8,0,TAU);c.fill();c.fillStyle='#f5d142';c.beginPath();c.arc(38,-24,3,0,TAU);c.fill();c.fillStyle='#d9463e';c.beginPath();c.ellipse(27,9,22,6,0,0,TAU);c.fill();
+  if(tag){c.font='800 13px ui-rounded,system-ui,sans-serif';const t='My House',w=c.measureText(t).width+16;c.translate(0,-188);c.rotate(-.03);c.fillStyle='#fbf6ea';c.shadowColor='rgba(0,0,0,.3)';c.shadowBlur=4;c.shadowOffsetY=2;rr(c,-w/2,-11,w,22,5);c.fill();c.shadowColor='transparent';c.fillStyle='#3b2f2a';c.textAlign='center';c.textBaseline='middle';c.fillText(t,0,1);c.font='700 10.5px system-ui';c.fillStyle='#fff';c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=3;c.fillText(tag,0,18);c.shadowColor='transparent';c.textBaseline='alphabetic'}
+  c.restore()}
 const ST={kind:'level',d:LVL,cam:{x:0,y:0},z:1,sel:null,arm:null,play:false,walk:false,st:null,hero:null,keys:{l:0,r:0,j:0,jb:0},acc:0,got:new Set(),grid:null,won:false,tgt:null,th:{face:1,ph:0}};
 function stageZoom(){ST.z=ST.kind==='level'?Math.max(H/600,W/700):clamp(W/460,.8,1.25)}
 function enterStage(kind){ST.kind=kind;ST.d=kind==='level'?LVL:TOWN;ST.d.items=ST.d.items.filter(i=>toyById(i.toy));ST.sel=null;ST.arm=null;ST.play=false;ST.walk=false;ST.tgt=null;ST.hop=null;ST.th.z=0;ST.layer='world';ST.hsel=null;PET.ok=false;stageZoom();
@@ -603,17 +636,18 @@ function itemAt(w){const arr=drawOrder();for(let i=arr.length-1;i>=0;i--){const 
 function drawItem(c,it,t,swing){const toy=toyById(it.toy);if(!toy)return;c.save();c.translate(it.x,it.y);c.scale(it.s*it.flip,it.s);c.translate(-toy.w/2,-toy.h);drawToy(c,toy,t,swing);c.restore()}
 function clampCam(){const vw=W/ST.z,vh=H/ST.z;if(ST.kind==='level'){ST.cam.x=clamp(ST.cam.x,-120,Math.max(-120,LV.W+120-vw));ST.cam.y=clamp(ST.cam.y,LV.TOP-60,LV.G-vh*.4)}else{ST.cam.x=clamp(ST.cam.x,-260,Math.max(-260,TW.W+260-vw));ST.cam.y=clamp(ST.cam.y,-260,Math.max(-260,TW.H+420-vh))}}
 function fixItem(it){if(ST.kind==='level'){it.x=clamp(it.x,0,LV.W);if(it.y>LV.G-10)it.y=LV.G;it.y=Math.max(LV.TOP+40,it.y)}else{it.x=clamp(it.x,20,TW.W-20);it.y=clamp(it.y,40,TW.H-10)}}
-function sDown(e){const w=sw(e.clientX,e.clientY);if(ST.play)return;if(ST.kind==='level'&&ST.layer==='hud'){hudDown(e);return}if(ST.walk){ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)};ST.st={k:'walk'};return}
+function sDown(e){const w=sw(e.clientX,e.clientY);if(ST.play)return;if(ST.kind==='level'&&ST.layer==='hud'){hudDown(e);return}if(ST.walk){if(houseAt(w)){const p=TOWN.house;ST.tgt={x:p.x+HDOOR.x,y:p.y+HDOOR.y};ST.pendH=1;ST.st={k:'toHouse'};return}ST.pendH=0;ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)};ST.st={k:'walk'};return}
   if(ST.arm){const t=toyById(ST.arm);if(!t){ST.arm=null;return}if(ST.d.items.length>=120){toast('That is a lot of pieces! Remove some first.');return}const s=Math.min(1,150/Math.max(t.w,t.h)),it={toy:t.id,x:w.x,y:w.y+t.h*s/2,s,flip:1,beh:t.beh||'solid'};fixItem(it);ST.d.items.push(it);ST.sel=it;SFX.thwap();ST.st={k:'drag',it,ox:w.x-it.x,oy:w.y-it.y};updItemBar();return}
   if(ST.kind==='level')for(const k of['goal','start']){const o=ST.d[k];if(Math.abs(w.x-o.x)<36&&w.y>o.y-92&&w.y<o.y+16){ST.st={k:'spec',o,ox:w.x-o.x,oy:w.y-o.y};ST.sel=null;updItemBar();return}}
-  const it=itemAt(w);if(it){ST.sel=it;ST.st={k:'drag',it,ox:w.x-it.x,oy:w.y-it.y};SFX.tick()}else{ST.sel=null;ST.st={k:'pan',sx:e.clientX,sy:e.clientY,cx:ST.cam.x,cy:ST.cam.y}}updItemBar()}
+  const it=itemAt(w);if(it){ST.sel=it;ST.st={k:'drag',it,ox:w.x-it.x,oy:w.y-it.y};SFX.tick()}else if(ST.kind==='town'&&houseAt(w)){ST.sel=null;ST.st={k:'house',sx:e.clientX,sy:e.clientY,ox:w.x-TOWN.house.x,oy:w.y-TOWN.house.y,mv:0}}else{ST.sel=null;ST.st={k:'pan',sx:e.clientX,sy:e.clientY,cx:ST.cam.x,cy:ST.cam.y}}updItemBar()}
 function sMove(e){const st=ST.st;if(!st)return;const w=sw(e.clientX,e.clientY);
   if(st.k==='hud'){st.el.fx=clamp((e.clientX-st.ox)/W,0,1);st.el.fy=clamp((e.clientY-st.oy)/H,0,1);st.moved=1}
   else if(st.k==='drag'){st.it.x=w.x-st.ox;st.it.y=w.y-st.oy;fixItem(st.it)}
   else if(st.k==='spec'){st.o.x=clamp(w.x-st.ox,30,LV.W-30);st.o.y=w.y-st.oy;if(st.o.y>LV.G-12)st.o.y=LV.G;st.o.y=Math.max(LV.TOP+100,st.o.y)}
   else if(st.k==='pan'){ST.cam.x=st.cx-(e.clientX-st.sx)/ST.z;ST.cam.y=st.cy-(e.clientY-st.sy)/ST.z;clampCam()}
+  else if(st.k==='house'){if(!st.mv&&Math.hypot(e.clientX-st.sx,e.clientY-st.sy)>10)st.mv=1;if(st.mv){TOWN.house.x=clamp(w.x-st.ox,100,TW.W-100);TOWN.house.y=clamp(w.y-st.oy,190,TW.H-40)}}
   else if(st.k==='walk')ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)}}
-function sUp(){const st=ST.st;ST.st=null;if(st&&(st.k==='drag'||st.k==='spec'||(st.k==='hud'&&st.moved)))saveStage()}
+function sUp(e,pin){const st=ST.st;ST.st=null;if(st&&st.k==='house'){if(st.mv)saveStage();else if(!pin){SFX.tick();go('house')}return}if(st&&(st.k==='drag'||st.k==='spec'||(st.k==='hud'&&st.moved)))saveStage()}
 function sPinch(pz){if(pz.cx0===undefined){pz.cx0=ST.cam.x;pz.cy0=ST.cam.y}ST.cam.x=pz.cx0-(pz.cx-pz.mx)/ST.z;ST.cam.y=pz.cy0-(pz.cy-pz.my)/ST.z;clampCam()}
 /* ---- play ---- */
 function buildGrid(){const gr=new Uint8Array(GW*GH);[['solid',1],['bouncy',3],['ouch',5]].forEach(([beh,bit])=>{const c=mkCanvas(GW,GH,true),x=c._x;x.scale(.25,.25);x.translate(0,-LV.TOP);LVL.items.forEach(it=>{if(it.beh===beh)drawItem(x,it,0,0)});const d=x.getImageData(0,0,GW,GH).data;for(let i=0;i<GW*GH;i++)if(d[i*4+3]>90)gr[i]|=bit});ST.grid=gr}
@@ -643,13 +677,13 @@ function updStage(){ST.t=(ST.t||0)+DT;
         if(hit&&hit!==cur){moved=false;if((hit.tb||'block')==='climb'){let sd=10,ex=0,ey=0;for(;sd<420;sd+=8){ex=hr.x+ux*sd;ey=hr.y+uy*sd;if(townHit(ex,ey)!==hit)break}ex+=ux*8;ey+=uy*8;if(sd<420&&!townHit(ex,ey)&&ex>20&&ex<TW.W-20&&ey>40&&ey<TW.H-10){const r=itemRect(hit);ST.hop={x0:hr.x,y0:hr.y,x1:ex,y1:ey,t:0,ht:Math.min(90,r.h*.7+24)};SFX.jump()}else ST.tgt=null}
           else if(free(nx,hr.y)&&Math.abs(ux)>.2){hr.x=nx;moved=true}else if(free(hr.x,ny)&&Math.abs(uy)>.2){hr.y=ny;moved=true}else{ST.tgt=null;if(!ST.bumpT||NOW-ST.bumpT>900){ST.bumpT=NOW;SFX.thud()}}}
         else{hr.x=nx;hr.y=ny}
-        if(moved){if(Math.abs(dx)>2)ST.th.face=dx>0?1:-1;const p0=ST.th.ph;ST.th.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(ST.th.ph/Math.PI))SFX.step()}}else{ST.tgt=null;LS.set('town',TOWN)}}
+        if(moved){if(Math.abs(dx)>2)ST.th.face=dx>0?1:-1;const p0=ST.th.ph;ST.th.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(ST.th.ph/Math.PI))SFX.step()}}else{ST.tgt=null;LS.set('town',TOWN);if(ST.pendH){ST.pendH=0;SFX.tick();go('house');return}}}
     petFollow(hr.x,hr.y,ST.th.z||0,40);
     const vw=W/ST.z,vh=H/ST.z;ST.cam.x+=(hr.x-vw/2-ST.cam.x)*Math.min(1,DT*5);ST.cam.y+=(hr.y-vh*.45-ST.cam.y)*Math.min(1,DT*5)}}
 /* little town: what you cannot walk through */
 const TBEH={block:{em:'🧱',name:'Blocks the way'},pass:{em:'👣',name:'Walk through'},climb:{em:'🧗',name:'Climb over'}};
 function foot(it){const r=itemRect(it);if(!r)return null;const d=clamp(r.h*.25,10,34),hw=r.w*.4;return{x0:it.x-hw-9,x1:it.x+hw+9,y0:it.y-d,y1:it.y+6}}
-function townHit(x,y){for(const it of TOWN.items){if((it.tb||'block')==='pass')continue;const f=foot(it);if(f&&x>f.x0&&x<f.x1&&y>f.y0&&y<f.y1)return it}return null}
+function townHit(x,y){const hp=TOWN.house;if(x>hp.x-80&&x<hp.x+80&&y>hp.y-46&&y<hp.y+5)return hp;for(const it of TOWN.items){if((it.tb||'block')==='pass')continue;const f=foot(it);if(f&&x>f.x0&&x<f.x1&&y>f.y0&&y<f.y1)return it}return null}
 /* ---- the placeholder hero: a little paper pal with a folded hat ---- */
 function drawHero(c,x,y,face,ph,air){c.save();c.translate(x,y);c.scale(face,1);const s=Math.sin(ph)*(air?.25:.7),part=(fn,col)=>{fn();c.strokeStyle='#fff';c.lineWidth=4;c.lineJoin='round';c.stroke();fn();c.fillStyle=col;c.fill()};
   for(const k of[-1,1]){c.save();c.translate(k*4.5,-13);c.rotate(k*s);part(()=>rr(c,-3.5,0,7,13,3),'#3767bb');c.restore()}
@@ -674,8 +708,8 @@ function drawStage(){const z=ST.z,cam=ST.cam,t=ST.t||0,lvl=ST.kind==='level';
   else{g.fillStyle='rgba(0,0,0,.3)';g.fillRect(8,10,TW.W,TW.H);g.fillStyle=g.createPattern(KRAFT,'repeat');g.fillRect(0,0,TW.W,TW.H);g.strokeStyle='rgba(90,60,30,.13)';g.lineWidth=1.5;g.beginPath();for(let x=100;x<TW.W;x+=100){g.moveTo(x,0);g.lineTo(x,TW.H)}for(let y=100;y<TW.H;y+=100){g.moveTo(0,y);g.lineTo(TW.W,y)}g.stroke();
     g.fillStyle='rgba(250,240,190,.75)';[[0,0],[TW.W,0],[0,TW.H],[TW.W,TW.H]].forEach((p,i)=>{g.save();g.translate(p[0],p[1]);g.rotate(Math.PI/4+i*Math.PI/2);g.fillRect(-45,-13,90,26);g.restore()});
     g.fillStyle='rgba(90,60,30,.45)';g.font='900 40px system-ui';g.textAlign='center';g.fillText('Little Town',TW.W/2,70);
-    const hr=TOWN.hero,hz=ST.th.z||0,arr=drawOrder().map(it=>({y:it.y,it})).concat([{y:hz?1e9:hr.y,hero:1},{y:PET.z>2?1e9-1:PET.y-.1,pet:1}]).sort((a,b)=>a.y-b.y);if(!PET.ok)petSnap(hr.x,hr.y);
-    for(const o of arr){if(o.pet){if(PET.kind!=='none'){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(PET.x,PET.y,12,4,0,0,TAU);g.fill();drawPet(g,PET.x,PET.y-PET.z)}}else if(o.hero){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(hr.x,hr.y,14,5,0,0,TAU);g.fill();drawHero(g,hr.x,hr.y-hz,ST.th.face,ST.th.ph,hz>0)}else{const r=itemRect(o.it);if(!r)continue;g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(o.it.x,o.it.y,r.w*.45,Math.min(12,r.w*.12),0,0,TAU);g.fill();drawItem(g,o.it,t,ST.walk?1:.35)}}
+    const hr=TOWN.hero,hz=ST.th.z||0,arr=drawOrder().map(it=>({y:it.y,it})).concat([{y:hz?1e9:hr.y,hero:1},{y:PET.z>2?1e9-1:PET.y-.1,pet:1},{y:TOWN.house.y,house:1}]).sort((a,b)=>a.y-b.y);if(!PET.ok)petSnap(hr.x,hr.y);
+    for(const o of arr){if(o.house){drawTownHouse(g,TOWN.house,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.pet){if(PET.kind!=='none'){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(PET.x,PET.y,12,4,0,0,TAU);g.fill();drawPet(g,PET.x,PET.y-PET.z)}}else if(o.hero){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(hr.x,hr.y,14,5,0,0,TAU);g.fill();drawHero(g,hr.x,hr.y-hz,ST.th.face,ST.th.ph,hz>0)}else{const r=itemRect(o.it);if(!r)continue;g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(o.it.x,o.it.y,r.w*.45,Math.min(12,r.w*.12),0,0,TAU);g.fill();drawItem(g,o.it,t,ST.walk?1:.35)}}
     if(ST.walk&&ST.tgt){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(ST.tgt.x,ST.tgt.y,9+Math.sin(t*8)*2,0,TAU);g.stroke()}}
   if(!ST.play&&!ST.walk){
     if(lvl)for(const it of LVL.items){if(it.beh==='solid')continue;const r=itemRect(it);if(!r)continue;g.font=(15/z)+'px system-ui';g.textAlign='left';g.textBaseline='bottom';g.fillText(BEH[it.beh].em,r.x,r.y+2)}
@@ -697,8 +731,10 @@ function drawPet(c,x,y){const k=PET.kind;if(k==='none'||!PET.ok)return;c.save();
   c.restore()}
 function petMenu(){dlg('<h2>Pick a companion</h2><p>It follows you in the loft, in Little Town and in your levels.</p>'+Object.keys(PETS).map(k=>'<button class="les" data-p="'+k+'" style="margin-top:8px;'+(PET.kind===k?'background:var(--yellow)':'')+'"><span>'+PETS[k][0]+' '+PETS[k][1]+'</span><i>'+(PET.kind===k?'✓':'')+'</i></button>').join(''),d=>d.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{PET.kind=b.dataset.p;LS.set('pet',PET.kind);PET.ok=false;SFX.collect();closeDlg();toast(PET.kind==='none'?'No companion for now':'Your '+PETS[PET.kind][1].toLowerCase()+' will follow you')}))}
 /* ================= THE SHOEBOX STUDIO LOBBY (walk-around menu) ================= */
-/* To add a station later: add one line to STATIONS and one draw function to STATION_DRAW. */
-const LOB={W:900,H:790,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:450,y:500},tgt:null,pend:null,face:1,ph:0,near:null};
+/* To add a station later: add one line to STATIONS and one draw function to STATION_DRAW.
+   A station does one of: go:'screen' (switch screen), act:()=>... (run something, like openTool), or soon:1 (coming soon).
+   The same walk-around code runs every room. RM is the room you are in: LOB (the studio) or HOUSE (the house in Little Town). */
+const LOB={key:'lobby',W:900,H:790,vw:600,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:450,y:500},tgt:null,pend:null,face:1,ph:0,near:null};
 const STATIONS=[
   {id:'studio',name:'Art Studio',x:120,y:210,wall:1,soon:1},
   {id:'cork',name:'Cork Board',x:270,y:210,wall:1,soon:1},
@@ -707,12 +743,48 @@ const STATIONS=[
   {id:'desk',name:'School Desk',sub:'Craft',x:210,y:400,go:'craft',verb:'Sit at the School Desk'},
   {id:'chest',name:'Toy Chest',sub:'Levels and Toy Box',x:690,y:420,act:()=>chestMenu(),verb:'Open the Toy Chest'},
   {id:'kit',name:'Pixel UI Kit',sub:'Game-kit pegboard',x:620,y:610,go:'kit',verb:'Use the Pixel UI Kit',tagY:-150},
+  {id:'shelf',name:'Bookshelf',sub:'Story Shelf',x:822,y:530,h:172,act:()=>openTool('shelf'),verb:'Open Story Shelf',tagY:-194},
   {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:300,y:715,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
   {id:'fridge',name:'Fridge Gallery',x:110,y:690,soon:1},
   {id:'shop',name:'Supply Shop',x:450,y:745,soon:1},
-  {id:'mirror',name:'Dress-up Mirror',x:800,y:700,soon:1}];
+  {id:'mirror',name:'Dress-up Mirror',x:800,y:728,soon:1}];
+LOB.stn=STATIONS;
+/* ---- the house (a small room you enter from Little Town). Add things to it the same way: one line here, one draw function. ---- */
+const HOUSE={W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:460,y:262},tgt:null,pend:null,face:1,ph:0,near:null,stn:[
+  {id:'hdoor',name:'Front Door',sub:'Back to Little Town',x:460,y:210,wall:1,act:()=>leaveHouse(),verb:'Go out to Little Town'},
+  {id:'deco',name:'Display Shelf',x:290,y:210,wall:1,soon:1,tagY:-150},
+  {id:'tv',name:'Game Console',sub:'Beat Bop Doodle',x:140,y:340,act:()=>openTool('bbd'),verb:'Play Beat Bop Doodle',tagY:-182},
+  {id:'beds',name:'Pet Beds',x:150,y:548,soon:1,tagY:-50}]};
+let RM=LOB;
 const standPt=s=>({x:s.x,y:s.wall?s.y+38:s.y+34});
 const STATION_DRAW={
+  /* The Bookshelf opens Story Shelf. BOOK NOOKS: the two dotted gaps (middle shelf and bottom shelf) are left empty on purpose.
+     They are the spots for book nooks, the tiny dioramas you will make later and slide in between the books. Draw them there. */
+  shelf(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,74,12,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';rr(c,-64,-168,128,170,7);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=3;c.stroke();c.fillStyle='#5c3d2a';c.fillRect(-55,-159,110,152);
+    const bk=(x,b,w,h,col,tilt)=>{c.save();c.translate(x,b);if(tilt)c.rotate(tilt);c.fillStyle=col;c.fillRect(0,-h,w,h);c.fillStyle='rgba(255,255,255,.55)';c.fillRect(1.5,-h+5,w-3,2.5);c.fillStyle='rgba(0,0,0,.16)';c.fillRect(w-1.5,-h,1.5,h);c.restore()},
+      nook=(x,b,w,h)=>{c.fillStyle='rgba(0,0,0,.22)';c.fillRect(x,b-h,w,h);c.strokeStyle='rgba(251,246,234,.7)';c.lineWidth=1.6;c.setLineDash([4,4]);c.strokeRect(x+2,b-h+2,w-4,h-4);c.setLineDash([]);c.fillStyle='rgba(251,246,234,.75)';c.fillRect(x+w/2-5,b-h/2-1,10,2);c.fillRect(x+w/2-1,b-h/2-5,2,10)};
+    [[-53,10,38,'#d9463e'],[-42,8,33,'#f5d142'],[-33,12,41,'#3767bb'],[-20,9,36,'#63b35d'],[-10,11,30,'#f191b3'],[2,8,39,'#f08a2e'],[11,10,34,'#8b5cb6'],[22,9,37,'#62b6e8']].forEach(b=>bk(b[0],-112,b[1],b[2],b[3]));bk(36,-112,9,34,'#f6f2e9',.22);
+    [[-53,9,34,'#62b6e8'],[-43,11,38,'#d9463e'],[-31,8,30,'#f5d142']].forEach(b=>bk(b[0],-62,b[1],b[2],b[3]));nook(-20,-62,42,40);[[25,9,36,'#2f7d4f'],[35,8,31,'#f191b3'],[44,9,38,'#f08a2e']].forEach(b=>bk(b[0],-62,b[1],b[2],b[3]));
+    nook(-53,-12,46,40);[[-4,10,36,'#8b5cb6'],[7,9,31,'#63b35d'],[17,11,38,'#3767bb'],[29,8,33,'#f5d142']].forEach(b=>bk(b[0],-12,b[1],b[2],b[3]));bk(42,-12,9,32,'#d9463e',.2);
+    c.fillStyle='#a8703f';[-112,-62,-12].forEach(y=>c.fillRect(-58,y,116,6));c.fillStyle='#a8703f';rr(c,-68,-174,136,10,4);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2;c.stroke()},
+  /* ---- house things ---- */
+  hdoor(c){STATION_DRAW.door(c)},
+  /* The console by the TV opens the in-game copy of Beat Bop Doodle. */
+  tv(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,6,84,14,0,0,TAU);c.fill();
+    c.fillStyle='#8b5a3c';c.fillRect(-66,-66,8,40);c.fillRect(58,-66,8,40);c.fillStyle='#b98552';rr(c,-74,-80,148,40,6);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=3;c.stroke();c.fillStyle='#6b4a34';c.fillRect(-58,-62,50,6);c.fillRect(8,-62,50,6);
+    c.fillStyle='#6b6f7a';c.beginPath();c.moveTo(-12,-132);c.lineTo(-30,-158);c.moveTo(12,-132);c.lineTo(26,-160);c.strokeStyle='#6b6f7a';c.lineWidth=3;c.stroke();
+    c.fillStyle='#caa76c';rr(c,-52,-136,104,60,9);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=3;c.stroke();c.fillStyle='#22283c';rr(c,-45,-129,72,46,7);c.fill();
+    const k=Math.floor(NOW/420)%4;['#e8443a','#f5c542','#7fd34a','#62b6e8'].forEach((col,i)=>{const hh=8+((i*2+k)%4)*7;c.fillStyle=col;c.fillRect(-38+i*15,-90-hh,10,hh)});c.fillStyle='rgba(255,255,255,.14)';c.fillRect(-41,-126,22,6);
+    c.fillStyle='#6b4a34';c.beginPath();c.arc(39,-120,4,0,TAU);c.arc(39,-106,4,0,TAU);c.fill();c.fillStyle='#63b35d';c.fillRect(36,-93,6,3);
+    c.strokeStyle='#3a3f4b';c.lineWidth=2;c.beginPath();c.moveTo(-30,-12);c.quadraticCurveTo(-58,4,-36,14);c.stroke();
+    c.fillStyle='#d5d2c8';rr(c,-36,-30,72,24,3);c.fill();c.strokeStyle='#6b6f7a';c.lineWidth=2.5;c.stroke();c.fillStyle='#5b6272';c.fillRect(-35,-15,70,8);c.fillStyle='#b9b6ac';c.fillRect(-26,-27,34,9);c.fillStyle='#d9463e';c.fillRect(-28,-13,9,4);c.fillStyle='#3a3f4b';c.fillRect(14,-13,7,4);c.fillRect(24,-13,7,4);c.fillStyle=Math.floor(NOW/700)%2?'#ff5a4a':'#b5301f';c.fillRect(-14,-13,4,4);
+    c.fillStyle='#d5d2c8';rr(c,-52,8,34,15,3);c.fill();c.strokeStyle='#6b6f7a';c.lineWidth=2;c.stroke();c.fillStyle='#3a3f4b';c.fillRect(-48,14,8,3);c.fillRect(-45.5,11.5,3,8);c.fillStyle='#d9463e';c.beginPath();c.arc(-29,16,2.4,0,TAU);c.arc(-23,13,2.4,0,TAU);c.fill()},
+  /* Empty wall shelf: the spot for decorations made in the game (crafts, dioramas, trophies). The dotted shapes are the free places. */
+  deco(c){c.fillStyle='#a8703f';rr(c,-66,-96,132,9,3);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2;c.stroke();c.fillStyle='#8b5a3c';c.beginPath();c.moveTo(-50,-87);c.lineTo(-50,-72);c.lineTo(-38,-87);c.moveTo(50,-87);c.lineTo(50,-72);c.lineTo(38,-87);c.fill();
+    c.strokeStyle='rgba(139,90,60,.8)';c.lineWidth=2;c.setLineDash([5,5]);c.strokeRect(-54,-126,26,28);c.beginPath();c.arc(0,-112,14,0,TAU);c.stroke();c.beginPath();c.moveTo(30,-98);c.lineTo(43,-128);c.lineTo(56,-98);c.closePath();c.stroke();c.setLineDash([])},
+  /* Pet beds: one bed is made, the dotted ovals are the spots for the other companions' beds. Later the pets can nap here. */
+  beds(c){c.fillStyle='rgba(0,0,0,.18)';c.beginPath();c.ellipse(-56,5,32,8,0,0,TAU);c.fill();c.fillStyle='#a8703f';c.beginPath();c.ellipse(-56,-8,32,15,0,0,TAU);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2.5;c.stroke();c.fillStyle='#f191b3';c.beginPath();c.ellipse(-56,-11,24,9.5,0,0,TAU);c.fill();c.strokeStyle='#fbf6ea';c.lineWidth=1.5;c.setLineDash([4,4]);c.beginPath();c.ellipse(-56,-11,18,6,0,0,TAU);c.stroke();
+    c.strokeStyle='rgba(251,246,234,.75)';c.lineWidth=2.5;c.setLineDash([7,6]);[8,72].forEach(x=>{c.beginPath();c.ellipse(x,-6,28,12,0,0,TAU);c.stroke()});c.setLineDash([])},
   pets(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,46,10,0,0,TAU);c.fill();c.fillStyle='#a8703f';c.beginPath();c.ellipse(0,-14,44,20,0,0,TAU);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=3;c.stroke();c.fillStyle='#62b6e8';c.beginPath();c.ellipse(0,-18,34,13,0,0,TAU);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2;for(let i=-3;i<=3;i++){c.beginPath();c.moveTo(i*11,-2);c.lineTo(i*12,6-Math.abs(i)*2.5);c.stroke()}},
   desk(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,86,14,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';c.fillRect(-72,-40,10,42);c.fillRect(62,-40,10,42);c.fillStyle='#dcae70';rr(c,-84,-82,168,50,8);c.fill();c.strokeStyle='#8b5a3c';c.lineWidth=3;c.stroke();
     c.save();c.translate(-22,-58);c.rotate(-.12);c.fillStyle='#d9463e';c.fillRect(-26,-16,52,32);c.restore();c.save();c.translate(38,-58);c.rotate(.5);c.fillStyle='#f5d142';c.fillRect(-22,-3,40,6);c.fillStyle='#f191b3';c.fillRect(-28,-3,6,6);c.restore();c.strokeStyle='#f08a2e';c.lineWidth=3;c.beginPath();c.arc(60,-66,6,0,TAU);c.arc(60,-52,6,0,TAU);c.stroke()},
@@ -731,31 +803,53 @@ const STATION_DRAW={
   fridge(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,46,10,0,0,TAU);c.fill();c.fillStyle='#f6f2e9';rr(c,-38,-126,76,128,10);c.fill();c.strokeStyle='#b9bcc2';c.lineWidth=3;c.stroke();c.beginPath();c.moveTo(-38,-82);c.lineTo(38,-82);c.stroke();c.fillStyle='#b9bcc2';c.fillRect(24,-112,5,22);c.fillRect(24,-74,5,30);[['#d9463e',-26,-70],['#63b35d',-4,-56],['#62b6e8',-24,-36]].forEach(n=>{c.fillStyle=n[0];c.fillRect(n[1],n[2],18,15)})},
   shop(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,80,12,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';c.fillRect(-72,-112,6,114);c.fillRect(66,-112,6,114);c.fillStyle='#caa76c';rr(c,-76,-50,152,50,5);c.fill();for(let i=0;i<8;i++){c.fillStyle=i%2?'#f6f2e9':'#d9463e';c.fillRect(-80+i*20,-128,20,28)}['#f5d142','#62b6e8','#f191b3','#63b35d'].forEach((k,i)=>{c.fillStyle=k;c.fillRect(-58+i*30,-66,22,16)})},
   mirror(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,30,8,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';c.fillRect(-4,-30,8,32);c.fillStyle='#caa76c';c.beginPath();c.ellipse(0,-78,34,54,0,0,TAU);c.fill();c.fillStyle='#cfe8f2';c.beginPath();c.ellipse(0,-78,27,47,0,0,TAU);c.fill();c.strokeStyle='rgba(255,255,255,.8)';c.lineWidth=4;c.beginPath();c.moveTo(-12,-100);c.lineTo(4,-116);c.stroke()}};
-function lobZoom(){LOB.z=clamp(Math.max(W/900,Math.min(W/600,H/800)),.4,1.7)}
-function lobCam(snap){const vw=W/LOB.z,vh=H/LOB.z,h=LOB.hero,tx=vw>=LOB.W?(LOB.W-vw)/2:clamp(h.x-vw/2,0,LOB.W-vw),ty=vh>=LOB.H?(LOB.H-vh)/2:clamp(h.y-vh*.55,0,LOB.H-vh),k=snap?1:Math.min(1,DT*5);LOB.cam.x+=(tx-LOB.cam.x)*k;LOB.cam.y+=(ty-LOB.cam.y)*k}
-const lw=(sx,sy)=>({x:LOB.cam.x+sx/LOB.z,y:LOB.cam.y+sy/LOB.z});
-function stnAt(w){for(const s of STATIONS){if(s.wall?(Math.abs(w.x-s.x)<70&&w.y<s.y+10&&w.y>s.y-190):(Math.abs(w.x-s.x)<80&&w.y<s.y+12&&w.y>s.y-130))return s}return null}
+function lobZoom(){RM.z=RM.fit?clamp(Math.min(W/RM.W,(H-70)/RM.H),.4,1.7):clamp(Math.max(W/RM.W,Math.min(W/RM.vw,H/(RM.H+10))),.4,1.7)}
+function lobCam(snap){const vw=W/RM.z,vh=H/RM.z,h=RM.hero,tx=vw>=RM.W?(RM.W-vw)/2:clamp(h.x-vw/2,0,RM.W-vw),ty=vh>=RM.H?(RM.H-vh)/2:clamp(h.y-vh*.55,0,RM.H-vh),k=snap?1:Math.min(1,DT*5);RM.cam.x+=(tx-RM.cam.x)*k;RM.cam.y+=(ty-RM.cam.y)*k}
+const lw=(sx,sy)=>({x:RM.cam.x+sx/RM.z,y:RM.cam.y+sy/RM.z});
+function stnAt(w){for(const s of RM.stn){if(s.wall?(Math.abs(w.x-s.x)<70&&w.y<s.y+10&&w.y>s.y-190):(Math.abs(w.x-s.x)<80&&w.y<s.y+12&&w.y>s.y-(s.h||130)))return s}return null}
 function enterStn(s){if(s.act){SFX.tick();s.act()}else if(s.soon){toast(s.name+' is coming in a later pass');SFX.tick()}else{SFX.tick();go(s.go)}}
-function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(s){LOB.tgt=standPt(s);LOB.pend=s}else{LOB.tgt={x:clamp(w.x,30,LOB.W-30),y:clamp(w.y,236,LOB.H-16)};LOB.pend=null}}
-function lMove(e){if(LOB.pend)return;const w=lw(e.clientX,e.clientY);LOB.tgt={x:clamp(w.x,30,LOB.W-30),y:clamp(w.y,236,LOB.H-16)}}
-function updLobby(){const h=LOB.hero;if(LOB.tgt){const dx=LOB.tgt.x-h.x,dy=LOB.tgt.y-h.y,d=Math.hypot(dx,dy);if(d>5){const v=Math.min(d,210*DT);h.x+=dx/d*v;h.y+=dy/d*v;if(Math.abs(dx)>2)LOB.face=dx>0?1:-1;const p0=LOB.ph;LOB.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(LOB.ph/Math.PI))SFX.step()}else{LOB.tgt=null;LS.set('lobby',h);if(LOB.pend){const s=LOB.pend;LOB.pend=null;enterStn(s);return}}}
+function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
+function lMove(e){if(RM.pend)return;const w=lw(e.clientX,e.clientY);RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)}}
+function updLobby(){const R=RM,h=R.hero;if(R.tgt){const dx=R.tgt.x-h.x,dy=R.tgt.y-h.y,d=Math.hypot(dx,dy);if(d>5){const v=Math.min(d,210*DT);h.x+=dx/d*v;h.y+=dy/d*v;if(Math.abs(dx)>2)R.face=dx>0?1:-1;const p0=R.ph;R.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(R.ph/Math.PI))SFX.step()}else{R.tgt=null;if(R.key)LS.set(R.key,h);if(R.pend){const s=R.pend;R.pend=null;enterStn(s);return}}}
   petFollow(h.x,h.y,0,40);
-  let near=null,bd=95;for(const s of STATIONS){const d=dist(standPt(s),h);if(d<bd){bd=d;near=s}}
-  if(near!==LOB.near){LOB.near=near;const b=$('#lobGo');if(near&&!near.soon){b.textContent=near.verb+' ▶';b.style.display='block'}else b.style.display='none'}
+  let near=null,bd=95;for(const s of R.stn){const d=dist(standPt(s),h);if(d<bd){bd=d;near=s}}
+  if(near!==R.near){R.near=near;const b=$('#lobGo');if(near&&!near.soon){b.textContent=near.verb+' ▶';b.style.display='block'}else b.style.display='none'}
   lobCam(false)}
 function drawTag(c,s){const t=s.name,soon=s.soon;c.font='800 13px ui-rounded,system-ui,sans-serif';const w=c.measureText(t).width+16,y=s.tagY?s.tagY:s.wall?-204:(s.id==='desk'?-106:s.id==='chest'?-136:-150);c.save();c.translate(0,y);c.rotate(-.03);c.fillStyle=soon?'#e9dfc6':'#fbf6ea';c.shadowColor='rgba(0,0,0,.3)';c.shadowBlur=4;c.shadowOffsetY=2;rr(c,-w/2,-11,w,22,5);c.fill();c.shadowColor='transparent';c.fillStyle='#3b2f2a';c.textAlign='center';c.textBaseline='middle';c.fillText(t,0,1);
   if(soon){c.font='800 10px system-ui';c.fillStyle='#8b5a3c';c.fillText('coming soon',0,17)}else if(s.sub){c.font='700 10.5px system-ui';c.fillStyle='#fff';c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=3;c.fillText(s.sub,0,18)}c.restore();c.textBaseline='alphabetic'}
-function drawLobby(){const z=LOB.z,cam=LOB.cam;g.fillStyle='#3e2a1e';g.fillRect(0,0,W,H);g.save();g.scale(z,z);g.translate(-cam.x,-cam.y);
+function drawLobbyRoom(){
   g.fillStyle='#6b4a34';g.fillRect(-400,-900,LOB.W+800,900);g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(-400,200,LOB.W+800,LOB.H+700);g.fillStyle='rgba(40,22,10,.45)';g.fillRect(-400,200,400,LOB.H+700);g.fillRect(LOB.W,200,400,LOB.H+700);g.fillRect(0,LOB.H,LOB.W,700);g.fillStyle='rgba(60,35,15,.12)';for(let x=0;x<LOB.W;x+=90)g.fillRect(x,200,2,LOB.H-200);
   g.fillStyle='#f1e2c2';g.fillRect(0,0,LOB.W,210);g.fillStyle='#e3cfa4';g.fillRect(0,150,LOB.W,60);g.fillStyle='#8b5a3c';g.fillRect(0,148,LOB.W,5);g.fillRect(0,206,LOB.W,7);
   g.fillStyle='#6b4a34';g.beginPath();g.moveTo(0,0);g.lineTo(300,0);g.lineTo(0,110);g.fill();g.beginPath();g.moveTo(LOB.W,0);g.lineTo(LOB.W-300,0);g.lineTo(LOB.W,110);g.fill();g.fillRect(0,0,LOB.W,12);
   g.fillStyle='#bfe3f0';g.beginPath();g.arc(620,84,36,0,TAU);g.fill();g.strokeStyle='#8b5a3c';g.lineWidth=6;g.stroke();g.beginPath();g.moveTo(584,84);g.lineTo(656,84);g.moveTo(620,48);g.lineTo(620,120);g.lineWidth=3;g.stroke();
   for(let i=0;i<9;i++){const x=330+i*30,y=26+Math.sin(i/8*Math.PI)*16;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-9,y);g.lineTo(x+9,y);g.lineTo(x,y+16);g.fill()}
   g.fillStyle='#f191b3';g.beginPath();g.ellipse(450,500,190,92,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(450,500,170,78,0,0,TAU);g.stroke();g.setLineDash([]);
-  const h=LOB.hero,list=STATIONS.map(s=>({y:s.wall?-1:s.y,s})).concat([{y:h.y,hero:1},{y:PET.y-.1,pet:1}]).sort((a,b)=>a.y-b.y);
-  for(const o of list){if(o.pet){if(PET.kind!=='none'&&PET.ok){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(PET.x,PET.y,15,5,0,0,TAU);g.fill();g.save();g.translate(PET.x,PET.y);g.scale(1.3,1.3);drawPet(g,0,0);g.restore()}}else if(o.hero){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(h.x,h.y,17,6,0,0,TAU);g.fill();g.save();g.translate(h.x,h.y);g.scale(1.35,1.35);drawHero(g,0,0,LOB.face,LOB.ph,false);g.restore()}
-    else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(LOB.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
-  if(LOB.tgt&&!LOB.pend){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(LOB.tgt.x,LOB.tgt.y,9+Math.sin(NOW/120)*2,0,TAU);g.stroke()}
+}
+/* the house room: drawn like a shoebox diorama with the front cut away */
+function drawHouseRoom(){const R=HOUSE,Wd=R.W;g.fillStyle='#4a3324';g.fillRect(-600,-900,Wd+1200,1100);
+  g.fillStyle='#8b5a3c';g.fillRect(Wd-150,-118,44,90);g.fillStyle='#6b4a34';g.fillRect(Wd-156,-126,56,12);
+  g.beginPath();g.moveTo(-26,2);g.lineTo(Wd/2,-150);g.lineTo(Wd+26,2);g.closePath();g.fillStyle='#d9463e';g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.lineJoin='round';g.stroke();
+  g.strokeStyle='rgba(120,30,25,.35)';g.lineWidth=3;for(let i=1;i<4;i++){const y=-150+i*38,hw=(Wd/2+26)*(i*38)/152;g.beginPath();g.setLineDash([16,10]);g.moveTo(Wd/2-hw+14,y);g.lineTo(Wd/2+hw-14,y);g.stroke()}g.setLineDash([]);
+  g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(-600,200,Wd+1200,R.H+700);g.fillStyle='rgba(40,22,10,.55)';g.fillRect(-600,200,600,R.H+700);g.fillRect(Wd,200,600,R.H+700);g.fillRect(0,R.H,Wd,700);g.fillStyle='rgba(60,35,15,.12)';for(let x=0;x<Wd;x+=80)g.fillRect(x,200,2,R.H-200);
+  g.fillStyle='#f3e3c3';g.fillRect(0,0,Wd,210);g.fillStyle='rgba(98,182,232,.2)';for(let x=14;x<Wd;x+=44)g.fillRect(x,12,16,138);g.fillStyle='#dcc296';g.fillRect(0,150,Wd,60);g.fillStyle='#8b5a3c';g.fillRect(0,148,Wd,5);g.fillRect(0,206,Wd,7);g.fillRect(0,0,Wd,12);g.fillRect(-8,0,8,R.H);g.fillRect(Wd,0,8,R.H);
+  /* window with yarn-tied curtains */
+  g.fillStyle='#8b5a3c';rr(g,84,40,112,92,6);g.fill();g.fillStyle='#bfe3f0';g.fillRect(92,48,96,76);g.fillStyle='#86c486';g.beginPath();g.ellipse(140,128,62,22,0,Math.PI,TAU);g.fill();g.fillStyle='#f5d142';g.beginPath();g.arc(166,68,10,0,TAU);g.fill();g.fillStyle='#8b5a3c';g.fillRect(138,48,4,76);g.fillRect(92,84,96,4);
+  g.fillStyle='#f191b3';[[1,84],[-1,196]].forEach(([k,x])=>{g.beginPath();g.moveTo(x,40);g.lineTo(x+k*30,40);g.quadraticCurveTo(x+k*26,90,x+k*6,104);g.lineTo(x+k*12,132);g.lineTo(x,132);g.closePath();g.fill()});g.fillStyle='#8b5a3c';g.fillRect(76,34,128,7);
+  /* a kid's drawing taped to the wall */
+  g.save();g.translate(382,96);g.rotate(.05);g.fillStyle='#fbf6ea';g.fillRect(-20,-26,40,34);g.fillStyle='#f5d142';g.beginPath();g.arc(-8,-14,6,0,TAU);g.fill();g.fillStyle='#63b35d';g.fillRect(-20,-2,40,10);g.fillStyle='#d9463e';g.beginPath();g.moveTo(2,-2);g.lineTo(9,-14);g.lineTo(16,-2);g.fill();g.fillStyle='rgba(250,240,190,.9)';g.fillRect(-8,-31,16,8);g.restore();
+  /* yarn rug */
+  g.fillStyle='#62b6e8';g.beginPath();g.ellipse(310,430,150,74,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(310,430,132,61,0,0,TAU);g.stroke();g.strokeStyle='#f5d142';g.lineWidth=4;g.beginPath();g.ellipse(310,430,96,40,0,0,TAU);g.stroke();g.setLineDash([]);
+  /* floor cushion in front of the TV */
+  g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(140,420,34,11,0,0,TAU);g.fill();g.fillStyle='#f08a2e';g.beginPath();g.ellipse(140,413,32,13,0,0,TAU);g.fill();g.fillStyle='#d9761f';g.beginPath();g.arc(140,412,3,0,TAU);g.fill();
+  /* DECORATION SPOT: a masking-tape outline on the floor. Things made in the game (clay pots, plants, dioramas) can stand here later. */
+  g.save();g.translate(440,520);g.strokeStyle='rgba(250,240,190,.85)';g.lineWidth=5;g.setLineDash([18,9]);g.strokeRect(-56,-34,112,62);g.setLineDash([]);g.rotate(-.04);g.fillStyle='rgba(250,240,190,.92)';g.fillRect(-46,-9,92,18);g.fillStyle='#8b5a3c';g.font='800 10.5px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('decoration spot',0,1);g.textBaseline='alphabetic';g.restore()}
+LOB.bg=drawLobbyRoom;HOUSE.bg=drawHouseRoom;
+function leaveHouse(){go('town');const p=TOWN.house;TOWN.hero.x=p.x+HDOOR.x;TOWN.hero.y=p.y+HDOOR.y;ST.walk=true;ST.th.face=1;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;LS.set('town',TOWN);buildStageUI()}
+function drawLobby(){const z=RM.z,cam=RM.cam;g.fillStyle='#3e2a1e';g.fillRect(0,0,W,H);g.save();g.scale(z,z);g.translate(-cam.x,-cam.y);RM.bg();
+  const h=RM.hero,list=RM.stn.map(s=>({y:s.wall?-1:s.y,s})).concat([{y:h.y,hero:1},{y:PET.y-.1,pet:1}]).sort((a,b)=>a.y-b.y);
+  for(const o of list){if(o.pet){if(PET.kind!=='none'&&PET.ok){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(PET.x,PET.y,15,5,0,0,TAU);g.fill();g.save();g.translate(PET.x,PET.y);g.scale(1.3,1.3);drawPet(g,0,0);g.restore()}}else if(o.hero){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(h.x,h.y,17,6,0,0,TAU);g.fill();g.save();g.translate(h.x,h.y);g.scale(1.35,1.35);drawHero(g,0,0,RM.face,RM.ph,false);g.restore()}
+    else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(RM.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
+  if(RM.tgt&&!RM.pend){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(RM.tgt.x,RM.tgt.y,9+Math.sin(NOW/120)*2,0,TAU);g.stroke()}
   g.restore()}
 /* ================= ART CLASS: a learning tree, small steps first ================= */
 /* Each lesson is a list of steps. c = which tab to open, tl = which tool, f = fold type. Add branches and lessons here. */
@@ -890,13 +984,14 @@ function renderChips(){const box=$('#chips');box.innerHTML='';
 function updBadge(){$('#nBox').textContent=LIB?LIB.length:TOYS.length}
 /* ---- screens ---- */
 let craftSeen=false;
-function showScr(){const m={lobbyUI:SCR==='home',classUI:SCR==='class',craftUI:SCR==='craft',stageUI:(SCR==='level'||SCR==='town')&&!ST.play,playUI:SCR==='level'&&ST.play,boxUI:SCR==='box',kitUI:SCR==='kit',lvlBar:SCR==='level'&&!ST.play};for(const k in m)$('#'+k).classList.toggle('on',m[k]);$('#top').style.display=SCR==='title'?'none':'flex';$('#bUndo').style.display=SCR==='craft'||SCR==='kit'?'':'none';$('#bHome').style.visibility=SCR==='home'?'hidden':'';$('#bBox').style.display=SCR==='box'||(SCR==='level'&&ST.play)?'none':'';$('#ttl').textContent={home:'Shoebox Studio',craft:'School Desk',level:'Make a Level',town:'Little Town',box:'Toy Box',class:'Art Class',kit:'Pixel UI Kit',title:''}[SCR];showLesson()}
-function go(s){if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;SCR=s;closeDlg();showScr();updBadge();
+function showScr(){const m={lobbyUI:SCR==='home'||SCR==='house',classUI:SCR==='class',craftUI:SCR==='craft',stageUI:(SCR==='level'||SCR==='town')&&!ST.play,playUI:SCR==='level'&&ST.play,boxUI:SCR==='box',kitUI:SCR==='kit',lvlBar:SCR==='level'&&!ST.play};for(const k in m)$('#'+k).classList.toggle('on',m[k]);$('#top').style.display=SCR==='title'?'none':'flex';$('#bUndo').style.display=SCR==='craft'||SCR==='kit'?'':'none';$('#bHome').style.visibility=SCR==='home'?'hidden':'';$('#bBox').style.display=SCR==='box'||(SCR==='level'&&ST.play)?'none':'';$('#ttl').textContent={home:'Shoebox Studio',craft:'School Desk',level:'Make a Level',town:'Little Town',house:'My House',box:'Toy Box',class:'Art Class',kit:'Pixel UI Kit',title:''}[SCR];showLesson()}
+function go(s){if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;ST.pendH=0;SCR=s;closeDlg();showScr();updBadge();
   if(s==='craft'){renderTabs();fitDesk(!craftSeen);if(!craftSeen&&!C.pieces.length&&!(LS.get('desk',{}).pieces||[]).length&&!LES)setTimeout(()=>{if(SCR==='craft'&&!C.pieces.length)placePaper(PAPERS[0])},350);craftSeen=true}
-  else if(s==='level'||s==='town')enterStage(s);else if(s==='box')renderBox();else if(s==='kit')renderKit();else if(s==='class')renderClass();else if(s==='home'){PET.ok=false;LOB.tgt=null;LOB.pend=null;LOB.near=undefined;lobZoom();lobCam(true)}}
-function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat']];
-  dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
-$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lobGo').onclick=()=>{auInit();if(LOB.near)enterStn(LOB.near)};
+  else if(s==='level'||s==='town')enterStage(s);else if(s==='box')renderBox();else if(s==='kit')renderKit();else if(s==='class')renderClass();else if(s==='home'||s==='house'){RM=s==='house'?HOUSE:LOB;if(s==='house')HOUSE.hero={x:460,y:262};PET.ok=false;RM.tgt=null;RM.pend=null;RM.near=undefined;lobZoom();lobCam(true)}}
+function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['house','🛋️','My House','A cozy room in Little Town, with a game console'],['shelf','📚','Bookshelf','Story Shelf: plan stories, worlds and characters'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat']];
+  dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else if(b.dataset.q==='shelf')openTool('shelf');else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
+$('#ovlBack').onclick=()=>closeTool();
+$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
 $('#bHome').onclick=()=>{auInit();SFX.tick();go('home')};$('#bBox').onclick=()=>{auInit();SFX.tick();go('box')};$('#bUndo').onclick=()=>{auInit();if(SCR==='kit')kitUndo();else undo()};
 /* ---- stage UI ---- */
 function buildStageUI(){const tray=$('#tray');tray.innerHTML='';tray.style.display=ST.walk?'none':'';$('#layW').classList.toggle('on',ST.layer!=='hud');$('#layH').classList.toggle('on',ST.layer==='hud');if(ST.kind==='level'&&ST.layer==='hud'){buildHudUI();return}if(!TOYS.length)tray.innerHTML='<div id="trayEmpty">Your toy box is empty. Make something in Craft first!</div>';
@@ -1166,7 +1261,7 @@ function saveLevelAsset(){const n=LIB.filter(a=>a.type==='level').length+1;dlg('
   d.querySelector('#dYes').onclick=()=>{const a={id:newAid(),type:'level',name:(d.querySelector('#an').value||'My level '+n).trim().slice(0,24)||'My level',tags:parseTags(d.querySelector('#atg').value),date:Date.now(),data:lvlClean(JSON.parse(JSON.stringify(LVL)))};try{a.thumb=lvlThumbURL(LVL)}catch(e){}LIB.push(a);if(!saveLib()){LIB.pop();toast('Storage is full. Remove something first.');return}closeDlg();SFX.thud();updBadge();toast(a.name+' is in the Toy Box')}})}
 /* ---- touch / pen / mouse on the canvas ---- */
 const PT=new Map();let pinch=null,plock=false;
-const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:SCR==='home'?{d:lDown,m:lMove,u:NOP,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>go('home'),p:NOP}:null;
+const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:NOP,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>go('home'),p:NOP}:null;
 cv.addEventListener('pointerdown',e=>{auInit();const h=handler();if(!h)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(PT.size===1&&!plock)h.d(e);else if(PT.size===2){h.u(e,true);plock=true;const[a,b]=[...PT.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,d:1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2}}});
 cv.addEventListener('pointermove',e=>{const h=handler();if(!h||!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1182,10 +1277,10 @@ function drawBack(dim){g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(0,0
 function drawHome(){drawBack(.12);const rows=['SHOEBOX','STUDIO'],ts=Math.min(54,W/8.6,H*.34/2.9),top=Math.max(54,H*.38/2-ts*1.25);g.textAlign='center';g.textBaseline='middle';
   rows.forEach((row,ri)=>{const n=row.length,x0=W/2-(n-1)*ts*1.08/2;for(let i=0;i<n;i++){const k=ri*7+i,a=Math.sin(k*2.3)*.13+Math.sin(NOW/900+k)*.015;g.save();g.translate(x0+i*ts*1.08,top+ri*ts*1.22+ts/2+Math.sin(k*1.7)*3);g.rotate(a);g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6*DPR;g.shadowOffsetY=3*DPR;g.fillStyle='#fbf6ea';g.fillRect(-ts/2,-ts/2,ts,ts);g.shadowColor='transparent';g.fillStyle=PAPERS[(k*3+ri)%9];g.fillRect(-ts/2+3,-ts/2+3,ts-6,ts-6);g.fillStyle=((k*3+ri)%9===2)?'#3b2f2a':'#fff';g.font='900 '+(ts*.72)+'px ui-rounded,system-ui,sans-serif';g.fillText(row[i],0,ts*.04);g.restore()}});
   g.save();g.translate(W/2,top+ts*2.62);g.rotate(-.025);g.fillStyle='rgba(250,240,190,.92)';const tw=Math.min(W-40,250);g.fillRect(-tw/2,-13,tw,26);g.fillStyle='#3b2f2a';g.font='800 13.5px ui-rounded,system-ui,sans-serif';g.fillText('Cut  ·  Paste  ·  Play',0,1);g.restore();
-  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.3 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
+  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.4 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
 /* ---- main loop ---- */
-function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;g.setTransform(DPR,0,0,DPR,0,0);
-  if(SCR==='title')drawHome();else if(SCR==='home'){updLobby();if(SCR==='home')drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
+function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;if(OVL){requestAnimationFrame(frame);return}g.setTransform(DPR,0,0,DPR,0,0);
+  if(SCR==='title')drawHome();else if(SCR==='home'||SCR==='house'){updLobby();if(SCR==='home'||SCR==='house')drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
   auTick();requestAnimationFrame(frame)}
 resize();loadDesk();libInit();SCR='title';showScr();updBadge();requestAnimationFrame(frame);
 </script>
