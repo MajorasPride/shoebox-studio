@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.5.2, live)_
+_Last updated: Nov 13, 2026 (v1.6a on `dev`, not live; live site is still v1.5.2)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -25,6 +25,23 @@ _Last updated: Nov 13, 2026 (v1.5.2, live)_
 - Plan & Results doc (Google Docs): https://docs.google.com/document/d/1qK_6I6-r1UYR5d-sLYLuauwfbBMBov7so18W7_4GTrY/edit. Command Tracker: project P004, ticket T007, result R008.
 - Drive backup of v1.4 `index.html`: https://drive.google.com/file/d/1p-Xa8B4TIeGIKZFM86gN3wfOVEDcd90x/view
 - Private preview: none for v1.4. It was skipped on the owner's say-so (see the one-time exception above). Make one for the next big update.
+
+## What v1.6a added (built Nov 13, 2026 by Opus; ticket T013; on `dev`, NOT live)
+Waiting for the owner's look at the private preview. Do not merge to `main` until he says go. Code: search "v1.6a".
+1. **Game clock, day and night.** One shared clock (`CLK`, save key `craftloft_clock` = {m: minutes 0..1440, sp: 1 normal, 2 fast, 0 paused}). One game day = 8 real minutes (`DAYSEC`). Dawn 5:00-7:00, day 7:00-17:00, dusk 17:00-19:30, night 19:30-5:00. Tints Little Town (`townNight`), the studio's round window and the house window (`skyCol`). The sun/moon button in the top bar (studio, house, town) opens the clock: pause/run, 2x, jump to day, jump to night.
+2. **Things behave like what they are.** Each town item has a behavior tag `it.act`: `vehicle`, `light`, `door` or `none` (`TACT`). Toys carry a default `toy.act`; the Toy Box dialog ("In Little Town it...") and the asset card both have the Behavior picker, and the town item bar has a button to change it per item.
+   - Vehicles follow **road pieces** (toys with `road:1`; they lie flat under everything, snap to a 100 px grid and never block walking). They pick the straightest next piece, turn around at road ends, park on a lone piece, and stop when the hero is just ahead (`townActs`, `VEH`). Positions save every 8 s and when you leave town.
+   - Lights glow from dusk to dawn (strength kept in `LITE`, not saved). House and studio windows glow too.
+   - Doors open and close on tap in walk mode (`it.open`), and an open door can be walked through.
+3. **Showcase town.** New saves only (`mkShowTown`): a road loop with two cars, four street lights, the house, the studio, a park (trees, bench, flower beds, garden gate) and a "Made in Shoebox Studio" sign. All pieces are code-made toys with ids `show_*` (`mkShowToys`), added to every toy box (old towns are not touched). Build mode has **Showcase** (reset to showcase town): it asks first and keeps the old town in `craftloft_town_backup`.
+4. **Flip paper** (School Desk, Move and Draw chips: 🔄 Flip). Every sheet has a front and a back: `p.art` is the side you see, `p.back` the other side (stored in its own view, so its shape is the mirror), `p.side` front/back. Card-flip animation (`p.flipA`). The back shows a faint mirrored see-through of the front (`flatSkin`). Cuts and copies keep the back; the desk save keeps both sides. The old mirror button is now **↔️ Mirror**. Flip needs a flat, loose piece (not folded, not stuck).
+   - Toy box: if the piece has a back, the dialog asks "Which side?" (Front by default). A single two-sided sheet also stores `toy.sheet` {front, back} so "Copy to desk" brings back both sides.
+5. **Projector** (studio station, left of the floor, with a rolled-up screen under the window). Flipbook maker: pick Toy Box pieces as pages in order, speed 4-12 a second, loop on/off, Preview, Save as asset type `animation` {frames: toy ids, fps, loop}. The projector plays it full screen: the cloth screen rolls down, a beam from a small cardboard projector, page counter, Back and Again buttons (`projPlay`, `OVL='proj'`).
+6. **Console save** (house TV console, Beat Bop Doodle): a "Save to Studio" button in the tool bar. "Save this song" keeps Beat Bop Doodle's own song format (`songData()` / `ds_song2`: {len, bpm, notes [[step,row,'inst']], rep, times, barRep}) as asset type `music`. "Snap the screen" takes the biggest visible canvas and makes a framed **sticker** toy (asset type `sticker`).
+7. **Level music.** Make a Level has a 🎵 button: pick a music asset (or none). Saved in the level as `LVL.music` {aid, name, song copy}. It loops while you play (`songPlay`, a small synth that follows Beat Bop Doodle's rows and instruments); the music box goes quiet meanwhile.
+8. New asset types: Sticker, Animation, Music (export/import included). Version label v1.6a.
+- Tests run (Playwright, Galaxy S23 Ultra size 384x824 touch, plus 1280x800): new save shows the showcase town; clock runs, lights and windows come on at night; a car drives the whole loop and stops for the hero; a Toy Box piece set to Drives follows the road and one set to Lights up glows at night; flip a sheet, draw on both sides, reload keeps both; 3-page flipbook plays on the projector; song and screenshot saved from the console; song picked as level music and plays; a hand-made v1.5 town loads unchanged; every screen and Story Shelf open; no page errors.
+- Not checked: the owner's real phone, and audio by ear.
 
 ## What v1.5 added (built Nov 13, 2026 by Opus in chat, live; ticket T008)
 1. **The studio is a building in Little Town** ("SHOEBOX STUDIO", a cardboard shoebox on its side). Walk mode: tap it, the hero walks to the door and goes in. Build mode: tap to go in, drag to move it. It blocks walking like the house.
@@ -98,7 +115,8 @@ All of this is in `index.html`. Search for the comment titles below.
 
 ## Next steps
 - Owner plays v1.5 on the live site and says what to change.
-- T009: v1.6 default starter town (Opus to plan).
+- Owner plays the v1.6a private preview; push `dev` to `main` only after his go.
+- v1.6b (art mediums) and v1.6c (3D and first-person) are Fable orders. VHS spot with a cloth backdrop for the projector: planned, not built.
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
 - Book nooks on the bookshelf.
