@@ -5,6 +5,11 @@ _Last updated: Nov 12, 2026_
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
 
+## How updates work (owner's rule, Nov 12, 2026)
+- Small updates happen **on our end** in working copies: the private Claude artifacts, plus the `dev` branch of this repo.
+- The public game (`main` branch = the live website) only gets **big, fleshed-out updates**, and only when the owner says go.
+- Staged work waits on `dev`. It's in the repo but not on the website.
+
 ## Name
 - **Shoebox Studio**, tagline **Cut, Paste, Play**. Renamed from Craft Loft (and before that, Platformer Editor).
 - Short name: "Shoebox" or "SBS". Never "SS".
