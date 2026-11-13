@@ -254,6 +254,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #r3fade{position:absolute;inset:0;background:#2a1d14;opacity:0;pointer-events:none;transition:opacity .25s}#r3fade.on{opacity:1}
 .pv3{display:block;width:100%;max-width:300px;height:230px;margin:4px auto 0;border-radius:10px;background:radial-gradient(#fbf6ea,#e7d3a8)}
 .m3s{display:flex;gap:6px;margin-top:8px}.m3s button{flex:1;padding:9px 4px;border-radius:10px;background:#eee4cf;font-size:13px;font-weight:900;line-height:1.2}.m3s button.on{background:var(--yellow);box-shadow:0 0 0 2px var(--ink) inset}
+.m3s button.off{opacity:.45;filter:grayscale(1)}
+.m3s{flex-wrap:wrap}.m3s button{min-width:56px;font-size:12px}
 </style>
 </head>
 <body>
@@ -1930,12 +1932,20 @@ var R3=null,M3STOP=null;
 function r3dLoad(){return R3?Promise.resolve(R3):import('./r3d.js').then(m=>(R3=m))}
 function open3D(where){if(OVL)return;auInit();nbClose();closeDlg();OVL='r3d';setVol();$('#lobGo').style.display='none';toast('Opening Retro 3D…');
   r3dLoad().then(m=>m.open(where)).then(ok=>{if(ok===false){OVL=null;return}try{history.pushState({sbsTool:'r3d'},'')}catch(e){}}).catch(e=>{console.warn(e);OVL=null;setVol();toast('Retro 3D could not load. Check the connection and try again.')})}
-/* Make it 3D: a drawing becomes a flat cutout, a fold-up papercraft or a puffy clay piece (toy.m3d). Little Town 3D uses it. */
-const M3D={flat:{em:'🪧',name:'Cutout',tip:'A cardboard stand-up, like now.'},paper:{em:'📦',name:'Papercraft',tip:'Folds up out of the paper into a thick layered piece with a stand.'},clay:{em:'🫓',name:'Puffy clay',tip:'Puffs up like squishy clay, round in the middle.'}};
-function m3dDlg(toy){let st=toy.m3d||'flat';const show=()=>{if(M3STOP){M3STOP();M3STOP=null}const c=$('#pv3');if(!c)return;const n=c.cloneNode();c.replaceWith(n);r3dLoad().then(m=>m.preview(n,toy,st)).then(stop=>{if($('#pv3')===n)M3STOP=stop;else stop()}).catch(()=>toast('3D could not load'))};
-  dlg('<h2>🧊 Make it 3D</h2><canvas class="pv3" id="pv3"></canvas><div class="m3s">'+Object.keys(M3D).map(k=>'<button data-s="'+k+'" class="'+(k===st?'on':'')+'">'+M3D[k].em+'<br>'+M3D[k].name+'</button>').join('')+'</div><p id="m3tip" style="font-size:12.5px;margin:6px 0 0">'+M3D[st].tip+'</p><p style="font-size:12px;opacity:.75;margin:4px 0 0">You see it this way in Retro 3D. 2D stays the same.</p><div class="btns"><button class="alt" id="dNo">Cancel</button><button id="dYes">Save</button></div>',d=>{
-    d.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st=b.dataset.s;SFX.tick();d.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x===b));d.querySelector('#m3tip').textContent=M3D[st].tip;show()});
-    d.querySelector('#dNo').onclick=closeDlg;d.querySelector('#dYes').onclick=()=>{if(st==='flat')delete toy.m3d;else toy.m3d=st;saveToys();closeDlg();SFX.thud();toast(toy.name+': '+M3D[st].name+' in Retro 3D')};setTimeout(show,30)})}
+/* Make it 3D (T033): every piece stands up in Retro 3D as a thick cardboard standee with no extra steps. The menu turns it into more 3D:
+   Standee (default, toy.m3d unset), Puff (inflated like clay or a pillow, 'clay'), Fold (papercraft, 'paper'), Two sides ('two': the front drawing
+   in front and the Flip-paper back behind; a one-sided piece borrows a back from the Toy Box, toy.m3dBack = its id). A greyed Mythic Forge model
+   choice waits for the Forge station. The ids 'paper' and 'clay' are kept from v1.6c so old saves keep their look. Little Town 3D uses it. */
+const M3D={flat:{em:'🪧',name:'Standee',tip:'A thick cardboard stand-up. Every piece starts like this.'},clay:{em:'🫓',name:'Puff',tip:'Puffs up like clay or a pillow: round in the middle, thin at the edges.'},paper:{em:'📦',name:'Fold',tip:'Folds up out of the paper into a thick layered papercraft with a stand.'},two:{em:'🔄',name:'Two sides',tip:'Your drawing in front, the back of the paper behind.'},forge:{em:'🐉',name:'Mythic Forge',tip:'Coming with the Forge station: a model made in Mythic Forge.',off:1}};
+function m3dDlg(toy){let st=M3D[toy.m3d]&&!M3D[toy.m3d].off?toy.m3d:'flat',back=toy.m3dBack||'';
+  const backs=()=>TOYS.filter(t=>t.id!==toy.id&&!t.road&&t.parts&&t.parts.length),
+    tipOf=k=>k==='two'?(toy.sheet?'Your drawing in front, the back of the paper (Flip) behind.':'This piece has one side. Pick a back from the Toy Box, or flip the paper at the School Desk and draw on the back.'):M3D[k].tip;
+  const show=()=>{if(M3STOP){M3STOP();M3STOP=null}const c=$('#pv3');if(!c)return;const n=c.cloneNode();c.replaceWith(n);const t2=Object.assign({},toy,{m3dBack:back||undefined});r3dLoad().then(m=>m.preview(n,t2,st)).then(stop=>{if($('#pv3')===n)M3STOP=stop;else stop()}).catch(()=>toast('3D could not load'))};
+  const pick='<div id="m3back" style="display:'+(st==='two'&&!toy.sheet?'block':'none')+';margin-top:6px"><select id="m3bs" style="width:100%;padding:8px;border-radius:10px;font-weight:800"><option value="">Back: plain cardboard</option>'+backs().map(t=>'<option value="'+t.id+'"'+(t.id===back?' selected':'')+'>Back: '+esc(t.name)+'</option>').join('')+'</select></div>';
+  dlg('<h2>🧊 Make it 3D</h2><canvas class="pv3" id="pv3"></canvas><div class="m3s">'+Object.keys(M3D).map(k=>'<button data-s="'+k+'" class="'+(k===st?'on':'')+(M3D[k].off?' off':'')+'"'+(M3D[k].off?' aria-disabled="true"':'')+'>'+M3D[k].em+'<br>'+M3D[k].name+'</button>').join('')+'</div>'+pick+'<p id="m3tip" style="font-size:12.5px;margin:6px 0 0">'+tipOf(st)+'</p><p style="font-size:12px;opacity:.75;margin:4px 0 0">You see it this way in Retro 3D, in town. 2D stays the same.</p><div class="btns"><button class="alt" id="dNo">Cancel</button><button id="dYes">Save</button></div>',d=>{
+    d.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const k=b.dataset.s;if(M3D[k].off){SFX.tick();d.querySelector('#m3tip').textContent=M3D[k].tip;return}st=k;SFX.tick();d.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x===b));d.querySelector('#m3tip').textContent=tipOf(st);d.querySelector('#m3back').style.display=st==='two'&&!toy.sheet?'block':'none';show()});
+    d.querySelector('#m3bs').onchange=e=>{back=e.target.value;SFX.tick();show()};
+    d.querySelector('#dNo').onclick=closeDlg;d.querySelector('#dYes').onclick=()=>{if(st==='flat')delete toy.m3d;else toy.m3d=st;if(st==='two'&&!toy.sheet&&back)toy.m3dBack=back;else delete toy.m3dBack;if(R3&&R3.forget)R3.forget(toy.id);saveToys();closeDlg();SFX.thud();toast(toy.name+': '+M3D[st].name+' in Retro 3D')};setTimeout(show,30)})}
 
 /* ================= PICTURE EXAMPLES (T021) =================
    Every Art Class lesson has a finished example picture (step 0). The Drawing lessons also have one picture per step,

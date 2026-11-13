@@ -5,6 +5,7 @@
    T029: only moving things (cars) turn to face you; everything else keeps the facing set in Build mode (it.rot, see faceStep in index.html).
    Stationary cutouts have a cardboard edge so they never vanish side-on (thickCut). Signs are small cardboard plaques on the front of
    their object, sized to it (signBox). Walls and solid things stop the camera (three-mesh-bvh, lib/three-mesh-bvh.module.min.js, MIT).
+   T033: Make it 3D menu: Standee (default), Puff ('clay'), Fold ('paper'), Two sides ('two', backCanvas); a Mythic Forge model comes later.
    Uses three.js r160 (MIT, lib/three.module.min.js). All art is made in code or taken from the game's own drawings.
    This file reads the game's globals (TOWN, TW, toyById, drawToy, sprite, STATION_DRAW, nightK, ...) directly. */
 import * as THREE from './lib/three.module.min.js';
@@ -23,6 +24,23 @@ async function toyCanvas(toy) {
   if (TOYC.has(toy.id)) return TOYC.get(toy.id);
   await whenReady(toy); const k = Math.min(1.5, 512 / Math.max(toy.w, toy.h)), c = cvs(toy.w * k + 4, toy.h * k + 4), x = c.getContext('2d');
   x.translate(2, 2); x.scale(k, k); drawToy(x, toy, 0, 0); TOYC.set(toy.id, c); return c;
+}
+/* T033: the back of a Two sides piece, drawn the size of the front picture c and flipped left to right, so from behind it reads the right way
+   round and its shape lines up with the front. Source: the Flip-paper back (toy.sheet.back, stored as seen when turned over), else a Toy Box
+   piece picked in the menu (toy.m3dBack, fitted into the front's shape), else plain cardboard in the front's shape. */
+const loadImg = src => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+async function backCanvas(toy, c) {
+  const key = 'back:' + toy.id + ':' + (toy.m3dBack || ''); if (TOYC.has(key)) return TOYC.get(key);
+  const b = cvs(c.width, c.height), x = b.getContext('2d'); let src = null;
+  if (toy.sheet && toy.sheet.back) src = await loadImg(toy.sheet.back);
+  else if (toy.m3dBack && typeof toyById === 'function' && toyById(toy.m3dBack)) src = await toyCanvas(toyById(toy.m3dBack));
+  x.save(); x.translate(b.width, 0); x.scale(-1, 1);
+  if (src) { const pw = b.width - 4, ph = b.height - 4; if (toy.sheet) x.drawImage(src, 2, 2, pw, ph); else { const k = Math.max(pw / src.width, ph / src.height); x.drawImage(src, 2 + (pw - src.width * k) / 2, 2 + (ph - src.height * k) / 2, src.width * k, src.height * k); } }
+  else { x.fillStyle = '#d9c29a'; x.fillRect(0, 0, b.width, b.height); }
+  x.restore();
+  /* keep only the front's shape: after the flip the back lines up with the front's outline */
+  x.globalCompositeOperation = 'destination-in'; x.drawImage(c, 0, 0); x.globalCompositeOperation = 'source-over';
+  TOYC.set(key, b); return b;
 }
 function silhouette(c, col) { const s = cvs(c.width, c.height), x = s.getContext('2d'); x.drawImage(c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, s.width, s.height); return s; }
 function glowTex() { const c = cvs(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,240,190,1)'); g.addColorStop(.35, 'rgba(255,220,140,.55)'); g.addColorStop(1, 'rgba(255,200,120,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return texOf(c); }
@@ -77,7 +95,10 @@ async function pieceMesh(toy, style, opt = {}) {
   const mats = [];
   if (style === 'clay') {
     const front = puffyGeom(c, w, h, 1), back = puffyGeom(c, w, h, -1);
-    const m = new THREE.MeshStandardMaterial({ map: tex, alphaTest: .5, roughness: .88, metalness: 0, emissive: glow ? new THREE.Color(glow) : new THREE.Color(0), emissiveMap: glow ? tex : null, emissiveIntensity: 0 }); mats.push(m);
+    /* T033: the picture is grown a few pixels past its edge, so the seam where the two halves meet shows no pinholes */
+    const dc = cvs(c.width, c.height), dx = dc.getContext('2d'), gr = Math.max(2, Math.round(c.width / 48)); for (let a = 0; a < 8; a++) dx.drawImage(c, Math.round(Math.cos(a * Math.PI / 4) * gr), Math.round(Math.sin(a * Math.PI / 4) * gr)); dx.drawImage(c, 0, 0);
+    const ptex = texOf(dc);
+    const m = new THREE.MeshStandardMaterial({ map: ptex, alphaTest: .5, roughness: .88, metalness: 0, emissive: glow ? new THREE.Color(glow) : new THREE.Color(0), emissiveMap: glow ? ptex : null, emissiveIntensity: 0 }); mats.push(m);
     grp.add(new THREE.Mesh(front, m), new THREE.Mesh(back, m));
   } else if (style === 'paper') {
     const d = Math.max(6, Math.min(26, Math.min(w, h) * .12)), N = 7, plane = new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), edge = texOf(silhouette(c, '#f4ecdc'));
@@ -86,6 +107,11 @@ async function pieceMesh(toy, style, opt = {}) {
     const tab = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * .3, 60), h * .55).translate(0, h * .275, 0), lam({ color: 0xe9dfca, side: THREE.DoubleSide })); tab.position.z = -d / 2; tab.rotation.x = -.5; grp.add(tab);
     grp.userData.fold = { layers, t: opt.instant ? 1 : 0, tab };
     foldStep(grp, opt.instant ? 1 : 0);
+  } else if (style === 'two') {
+    /* T033 Two sides: the drawing in front, the back of the paper (toy.sheet.back, or a Toy Box piece toy.m3dBack) behind, on a cardboard edge */
+    const m = mat(); mats.push(m); const d = Math.max(3, Math.min(THICK, Math.min(w, h) * .12)), bc = await backCanvas(toy, c), cut = thickCut(c, m, w, h, d, 0xe6d8bc);
+    const bm = cut.userData.edgeMats[0]; bm.map = texOf(bc); bm.color.set(0xffffff); bm.alphaTest = .5; bm.needsUpdate = true; mats.push(bm); grp.add(cut);
+    if (!opt.noFoot) { const foot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w * .5, 70), 5, 18), lam({ color: 0xb48a58 })); foot.position.set(0, 2.5, -9 - d / 2); grp.add(foot); }
   } else {
     const m = mat(); mats.push(m); const d = opt.thick ? Math.max(3, Math.min(THICK, Math.min(w, h) * .12)) : 0;
     if (d) grp.add(thickCut(c, m, w, h, d, 0xe6d8bc)); else grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), m));
@@ -98,7 +124,7 @@ async function pieceMesh(toy, style, opt = {}) {
 function foldStep(grp, t) { const f = grp.userData.fold; if (!f) return; f.t = t; const e = 1 - Math.pow(1 - Math.min(1, t), 3); f.layers.forEach(m => { m.position.z = m.userData.k * e; }); f.tab.rotation.x = -.5 * e; f.tab.visible = e > .05; }
 /* a puffy pillow over the drawing's shape: height grows with the distance from the edge */
 function puffyGeom(c, w, h, side) {
-  const N = 56, nx = w >= h ? N : Math.max(8, Math.round(N * w / h)), ny = w >= h ? Math.max(8, Math.round(N * h / w)) : N;
+  const N = 64, nx = w >= h ? N : Math.max(8, Math.round(N * w / h)), ny = w >= h ? Math.max(8, Math.round(N * h / w)) : N;
   const s = cvs(nx + 1, ny + 1), x = s.getContext('2d'); x.drawImage(c, 0, 0, nx + 1, ny + 1); const a = x.getImageData(0, 0, nx + 1, ny + 1).data;
   const inside = new Float32Array((nx + 1) * (ny + 1)); for (let i = 0; i < inside.length; i++) inside[i] = a[i * 4 + 3] > 100 ? 1e6 : 0;
   /* two-pass distance transform */
@@ -106,8 +132,15 @@ function puffyGeom(c, w, h, side) {
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i; if (!inside[k]) continue; let v = inside[k]; if (i > 0) v = Math.min(v, at(i - 1, j) + 1); else v = 1; if (j > 0) v = Math.min(v, at(i, j - 1) + 1); else v = Math.min(v, 1); if (i > 0 && j > 0) v = Math.min(v, at(i - 1, j - 1) + 1.414); inside[k] = v; }
   for (let j = ny; j >= 0; j--) for (let i = nx; i >= 0; i--) { const k = j * W1 + i; if (!inside[k]) continue; let v = inside[k]; if (i < nx) v = Math.min(v, at(i + 1, j) + 1); else v = 1; if (j < ny) v = Math.min(v, at(i, j + 1) + 1); else v = Math.min(v, 1); if (i < nx && j < ny) v = Math.min(v, at(i + 1, j + 1) + 1.414); inside[k] = v; }
   let dm = 1; for (const v of inside) if (v < 1e5 && v > dm) dm = v;
-  const H = Math.min(w, h) * .26, g = new THREE.PlaneGeometry(w, h, nx, ny).translate(0, h / 2, 0), p = g.attributes.position;
-  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const d = inside[j * W1 + i], k = j * W1 + i; const t = d > 0 && d < 1e5 ? Math.min(1, d / dm) : 0, z = H * Math.sqrt(1 - (1 - t) * (1 - t)); p.setZ(k, z * side); }
+  /* T033 Puff, after Monster Mash's inflate idea (our own code): a round cross-section from the distance to the edge, then a few smoothing
+     passes so the ridge along the middle of long shapes becomes a soft pillow instead of a crease. Thin parts stay thin, wide parts get fat. */
+  const H = Math.min(w, h) * .3, g = new THREE.PlaneGeometry(w, h, nx, ny).translate(0, h / 2, 0), p = g.attributes.position, Z = new Float32Array(inside.length);
+  /* the rim (inside points next to the outside) sits at zero, so the front and back halves meet with no gap */
+  const rim = new Uint8Array(Z.length); for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i; if (!inside[k]) continue; if (i === 0 || j === 0 || i === nx || j === ny || !inside[k - 1] || !inside[k + 1] || !inside[k - W1] || !inside[k + W1]) rim[k] = 1; }
+  for (let k = 0; k < Z.length; k++) { const d = inside[k]; const t = d > 0 && d < 1e5 && !rim[k] ? Math.min(1, (d - .7) / Math.max(1, dm - .7)) : 0; Z[k] = H * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); }
+  const Zb = new Float32Array(Z.length);
+  for (let pass = 0; pass < 6; pass++) { for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const k = j * W1 + i; if (!Z[k]) { Zb[k] = 0; continue; } const n = (i > 0 ? Z[k - 1] : 0) + (i < nx ? Z[k + 1] : 0) + (j > 0 ? Z[k - W1] : 0) + (j < ny ? Z[k + W1] : 0); Zb[k] = rim[k] ? 0 : Math.max(Z[k] * .5 + n * .125, Z[k] * .8); } Z.set(Zb); }
+  for (let k = 0; k < Z.length; k++) p.setZ(k, Z[k] * side);
   if (side < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = t; } }
   g.computeVertexNormals(); return g;
 }
@@ -351,6 +384,6 @@ export async function preview(canvas, toy, style) {
   raf = requestAnimationFrame(tick);
   return () => { live = false; cancelAnimationFrame(raf); disposeScene(sc); r.dispose(); try { r.forceContextLoss(); } catch (e) { } };
 }
-export function forget(id) { TOYC.delete(id); }
+export function forget(id) { TOYC.delete(id); for (const k of [...TOYC.keys()]) if (typeof k === 'string' && k.startsWith('back:' + id + ':')) TOYC.delete(k); }
 /* for the Playwright tests: the live view's state (position, scene, what's near) */
 export function _state() { return R; }
