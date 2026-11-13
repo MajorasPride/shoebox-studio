@@ -195,7 +195,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
   <div id="ttl">Shoebox Studio</div>
   <button class="tb" id="bUndo" aria-label="Undo">↩️</button>
   <button class="tb" id="bBox" aria-label="Toy box">🧸<b id="nBox">0</b></button>
-  <button class="tb" id="bSet" aria-label="Settings">⚙️</button>
+  <button class="tb" id="bFull" aria-label="Full screen">⛶</button><button class="tb" id="bSet" aria-label="Settings">⚙️</button>
 </div>
 <div id="lobbyUI" class="scr"><button id="lobGo"></button><div id="lobRow"><button id="lobMove">✋ Move things</button><button id="lobQuick">☰ Quick jump</button></div></div>
 <div id="ovl"><div id="ovlBar"><button id="ovlBack">◀ Back to the studio</button><div id="ovlTtl"></div><a id="ovlOut" target="_blank" rel="noopener" aria-label="Open on its own page" title="Open on its own page">↗</a></div><div id="ovlBox"></div></div>
@@ -1032,6 +1032,13 @@ addEventListener('keydown',e=>{if(!ST.play||e.repeat)return;const k=e.key;if(k==
 addEventListener('keyup',e=>{const k=e.key;if(k==='ArrowLeft'||k==='a')ST.keys.l=0;else if(k==='ArrowRight'||k==='d')ST.keys.r=0;else if(k===' '||k==='ArrowUp'||k==='w')ST.keys.j=0});
 /* ---- toy box screen: see ASSET LIBRARY below ---- */
 /* ---- settings ---- */
+/* v1.5.2: full screen. The button toggles it; if you left it on, tapping the title screen turns it back on (browsers need a tap first). Hidden where the browser can't do it (iPhone Safari). */
+const FS={can:!!(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen),on:()=>!!(document.fullscreenElement||document.webkitFullscreenElement),
+  enter(){const d=document.documentElement;try{const p=(d.requestFullscreen||d.webkitRequestFullscreen).call(d,{navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}},
+  exit(){try{const p=(document.exitFullscreen||document.webkitExitFullscreen).call(document);if(p&&p.catch)p.catch(()=>{})}catch(e){}}};
+if(!FS.can)$('#bFull').style.display='none';
+$('#bFull').onclick=()=>{auInit();SFX.tick();if(FS.on()){FS.exit();LS.set('fs',0)}else{FS.enter();LS.set('fs',1)}};
+const fsIcon=()=>{$('#bFull').textContent=FS.on()?'🗗':'⛶'};document.addEventListener('fullscreenchange',fsIcon);document.addEventListener('webkitfullscreenchange',fsIcon);
 $('#bSet').onclick=()=>{auInit();SFX.tick();dlg('<h2>Settings</h2><div class="row"><label>Music</label><button class="tog'+(SET.music?' on':'')+'" id="sM" aria-label="Music on or off"></button></div><div class="row"><label>Music volume</label><input type="range" id="sMV" min="0" max="1" step="0.05" value="'+SET.mv+'"></div><div class="row"><label>Craft sounds</label><input type="range" id="sSV" min="0" max="1" step="0.05" value="'+SET.sv+'"></div><div class="row"><label>Hand colour</label>'+HANDS.map((h,i)=>'<button class="hsw'+(SET.hand===i?' on':'')+'" data-h="'+i+'" style="background:'+h+'" aria-label="hand colour"></button>').join('')+'</div><p style="font-size:12.5px;opacity:.8">Turn the music off and the craft sounds up for a quiet "just the sounds" desk. Every picture and sound in Shoebox Studio is made in code.</p><div class="btns"><button class="alt" id="sSt">Bring back starter pieces</button><button class="bad" id="sCl">Clear the desk</button><button id="sOk">Done</button></div>',d=>{const sv=()=>{LS.set('settings',SET);setVol()};
     d.querySelector('#sM').onclick=e=>{SET.music=!SET.music;e.target.classList.toggle('on',SET.music);sv()};d.querySelector('#sMV').oninput=e=>{SET.mv=+e.target.value;sv()};d.querySelector('#sSV').oninput=e=>{SET.sv=+e.target.value;sv()};d.querySelector('#sSV').onchange=()=>SFX.snip('regular');
     d.querySelectorAll('.hsw').forEach(b=>b.onclick=()=>{SET.hand=+b.dataset.h;d.querySelectorAll('.hsw').forEach(x=>x.classList.toggle('on',x===b));sv()});
@@ -1284,7 +1291,7 @@ function saveLevelAsset(){const n=LIB.filter(a=>a.type==='level').length+1;dlg('
   d.querySelector('#dYes').onclick=()=>{const a={id:newAid(),type:'level',name:(d.querySelector('#an').value||'My level '+n).trim().slice(0,24)||'My level',tags:parseTags(d.querySelector('#atg').value),date:Date.now(),data:lvlClean(JSON.parse(JSON.stringify(LVL)))};try{a.thumb=lvlThumbURL(LVL)}catch(e){}LIB.push(a);if(!saveLib()){LIB.pop();toast('Storage is full. Remove something first.');return}closeDlg();SFX.thud();updBadge();toast(a.name+' is in the Toy Box')}})}
 /* ---- touch / pen / mouse on the canvas ---- */
 const PT=new Map();let pinch=null,plock=false;
-const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>resume(),p:NOP}:null;
+const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>{if(FS.can&&LS.get('fs',0)&&!FS.on())FS.enter();resume()},p:NOP}:null;
 cv.addEventListener('pointerdown',e=>{auInit();const h=handler();if(!h)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(PT.size===1&&!plock)h.d(e);else if(PT.size===2){h.u(e,true);plock=true;const[a,b]=[...PT.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,d:1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2}}});
 cv.addEventListener('pointermove',e=>{const h=handler();if(!h||!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1300,7 +1307,7 @@ function drawBack(dim){g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(0,0
 function drawHome(){drawBack(.12);const rows=['SHOEBOX','STUDIO'],ts=Math.min(54,W/8.6,H*.34/2.9),top=Math.max(54,H*.38/2-ts*1.25);g.textAlign='center';g.textBaseline='middle';
   rows.forEach((row,ri)=>{const n=row.length,x0=W/2-(n-1)*ts*1.08/2;for(let i=0;i<n;i++){const k=ri*7+i,a=Math.sin(k*2.3)*.13+Math.sin(NOW/900+k)*.015;g.save();g.translate(x0+i*ts*1.08,top+ri*ts*1.22+ts/2+Math.sin(k*1.7)*3);g.rotate(a);g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6*DPR;g.shadowOffsetY=3*DPR;g.fillStyle='#fbf6ea';g.fillRect(-ts/2,-ts/2,ts,ts);g.shadowColor='transparent';g.fillStyle=PAPERS[(k*3+ri)%9];g.fillRect(-ts/2+3,-ts/2+3,ts-6,ts-6);g.fillStyle=((k*3+ri)%9===2)?'#3b2f2a':'#fff';g.font='900 '+(ts*.72)+'px ui-rounded,system-ui,sans-serif';g.fillText(row[i],0,ts*.04);g.restore()}});
   g.save();g.translate(W/2,top+ts*2.62);g.rotate(-.025);g.fillStyle='rgba(250,240,190,.92)';const tw=Math.min(W-40,250);g.fillRect(-tw/2,-13,tw,26);g.fillStyle='#3b2f2a';g.font='800 13.5px ui-rounded,system-ui,sans-serif';g.fillText('Cut  ·  Paste  ·  Play',0,1);g.restore();
-  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.5.1 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
+  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.5.2 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
 /* ---- main loop ---- */
 function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;if(OVL){requestAnimationFrame(frame);return}g.setTransform(DPR,0,0,DPR,0,0);
   if(SCR==='title')drawHome();else if(SCR==='home'||SCR==='house'){updLobby();if(SCR==='home'||SCR==='house')drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}

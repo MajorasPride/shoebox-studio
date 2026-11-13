@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.5.1, live)_
+_Last updated: Nov 13, 2026 (v1.5.2, live)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -35,6 +35,9 @@ _Last updated: Nov 13, 2026 (v1.5.1, live)_
 6. Rollback copy of v1.4 is in `/v1.4/`.
 - Code: search "v1.5:" comments, `BLD`, `bldAt`, `drawTownStudio`, `resume()`.
 - Tests run: Playwright at 412x860 and 1280x800: studio door to town, walk into house and studio, move studio, reload resumes house / studio / town (walk mode kept), brand-new save starts in studio, all screens and Story Shelf open, no page errors.
+
+## What v1.5.2 added (Nov 13, 2026, live)
+- **Full screen button** (⛶) in the top bar, next to Settings. Tap to go full screen, tap again (🗗) to leave. If it was left on, tapping the title screen turns it back on (browsers need a tap). Hidden on browsers that can't do it (iPhone Safari). Save key `craftloft_fs`. Owner wanted this in v1.5; it was missed in the first v1.5 order.
 
 ## What v1.5.1 added (Nov 13, 2026, live)
 - **Move things** button in the studio and the house (bottom left). Tap it, drag any station or piece of furniture, tap Done. Wall things (Art Class board, doors, Cork Board, Display Shelf) slide along the wall; floor things go anywhere on the floor. Saved per room: `craftloft_stnpos_lobby`, `craftloft_stnpos_househero`. Code: search "v1.5.1".
