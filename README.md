@@ -6,7 +6,7 @@ An arts-and-crafts game maker by MajorasPride. Make your own pieces at the Schoo
 
 What's in it (v1.6):
 - **Little Town**, a living tabletop town with day and night: cars drive the roads, street lights and windows glow at night, doors open. Your house and the studio stand in town.
-- **The School Desk**: paper in 9 stocks (sketch, watercolour, kraft, black, tracing, glitter, glow and more), 12 art mediums (pencils, coloured pencils, markers, crayons, watercolour, poster paint, charcoal, chalk and oil pastels, gel, glitter and glow pens), cut, fold, stick and flip paper over to draw on the back.
+- **The School Desk**: paper in 11 stocks (sketch, watercolour, lined notebook, cardboard, kraft, black, tracing, glitter, glow and more), 12 art mediums (pencils, coloured pencils, markers, crayons, watercolour, poster paint, charcoal, chalk and oil pastels, gel, glitter and glow pens), cut, fold, stick and flip paper over to draw on the back.
 - **Handy Notebook**: sketch while you walk around town, then turn a page into a sticker.
 - **Retro 3D**: walk through Little Town, the studio and your house in first person (thumb joystick, drag to look). **Make it 3D** turns a drawing into a papercraft or puffy clay piece.
 - **Make a Level**, the **Toy Box** (search, tags, medium filter, export), the **Projector** for flipbooks, the **Pixel UI Kit**, and Art Class lessons.
