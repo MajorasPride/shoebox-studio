@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6a on `dev`, not live; live site is still v1.5.2)_
+_Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`; rollback copy of v1.5.2 in `/v1.5.2/`)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -12,6 +12,7 @@ _Last updated: Nov 13, 2026 (v1.6a on `dev`, not live; live site is still v1.5.2
 - Staged work waits on `dev`. It's in the repo but not on the website.
 - **Nothing goes live without the owner's final look.** Before every big update, give the owner a private preview of the whole `dev` version to play. Push to `main` only after they say go.
 - **One-time exception (Nov 13, 2026):** the owner chose to put this first update (v1.4) live right away, without the preview step ("push everything we talked about now to the website, I wanna see how it goes"). The normal rule above still applies to every future update.
+- **Second exception (Nov 13, 2026):** the owner asked for v1.6a, v1.6b and v1.6c to be built and put live the same night ("build everything and go live tonight"), each tested on `dev` first, with a rollback copy of the live version. Done by Opus in Claude Code on the laptop. The preview-first rule is back in force from the next update.
 
 ## Name
 - **Shoebox Studio**, tagline **Cut, Paste, Play**. Renamed from Craft Loft (and before that, Platformer Editor).
@@ -24,7 +25,9 @@ _Last updated: Nov 13, 2026 (v1.6a on `dev`, not live; live site is still v1.5.2
 - Original v1 artifact (Craft Loft): https://claude.ai/artifact/AnfU7AN5iGdXarANhJpL5z. This repo's `index.html` is now the main copy.
 - Plan & Results doc (Google Docs): https://docs.google.com/document/d/1qK_6I6-r1UYR5d-sLYLuauwfbBMBov7so18W7_4GTrY/edit. Command Tracker: project P004, ticket T007, result R008.
 - Drive backup of v1.4 `index.html`: https://drive.google.com/file/d/1p-Xa8B4TIeGIKZFM86gN3wfOVEDcd90x/view
-- Private preview: none for v1.4. It was skipped on the owner's say-so (see the one-time exception above). Make one for the next big update.
+- Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
+- Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
+- Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
 
 ## What v1.6c added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
 Code: `r3d.js` (the whole 3D view, an ES module) + `lib/three.module.min.js` (three.js r160, MIT, see CREDITS.md) + a small "v1.6c" block at the end of index.html's main script. The 3D files load only the first time you open 3D, so 2D is as light as before.
@@ -41,7 +44,7 @@ Code: `r3d.js` (the whole 3D view, an ES module) + `lib/three.module.min.js` (th
 ## What v1.6b added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
 Code: search "v1.6b" (one block at the end of the main script, plus small hooks).
 1. **Art mediums.** School Desk > Draw has an **🎨 Art box** chip. Pick one of 12 mediums and a colour; the Pencil chip then shows the medium you're drawing with. Pencil, Coloured pencils, Markers, Crayons, Watercolour, Poster paint, Charcoal, Chalk pastels, Oil pastels, Gel pen, Glitter pen, Glow pen. They're all brushes made in code (`MEDIA`, `medSeg`). Grain mediums use a tinted texture fixed to the paper (`GRAIN`, `grainPat`), so the paper's tooth shows through and gaps stay put when you go over a line. Charcoal and pencil come in one colour only. Choice saved as `craftloft_artbox` {med, col, stock}.
-2. **Paper stocks.** Paper tab: the first chip picks the stock for the next sheet (`STOCKS`, `stockTex`): Construction (old default), Sketch, Watercolour (paint spreads wider on it), Cardstock, Kraft, Black art paper, Tracing (see-through), Glitter card, Glow paper. Sketch, Watercolour, Black and Glow paper have their own colour, so the colour row shows just that one.
+2. **Paper stocks.** Paper tab: the first chip picks the stock for the next sheet (`STOCKS`, `stockTex`): Construction (old default), Sketch, Watercolour (paint spreads wider on it), Cardstock, Lined notebook paper, Cardboard (corrugated), Kraft, Black art paper, Tracing (see-through), Glitter card, Glow paper. Sketch, Watercolour, Lined, Cardboard, Black and Glow paper have their own colour, so the colour row shows just that one.
 3. **Pieces remember what made them.** `p.med` = {m:[medium ids], stock, glow:'#colour', gl:1}. Kept through cut, copy, desk save, Toy Box and Copy to desk. Toys carry it as `toy.med`.
 4. **Medium tag and filter in the Toy Box.** A "Medium" row under the type row filters by medium (only mediums you've used are shown). Cards show the medium emojis. The asset dialog has "Medium (tap to tag)" to fix the tags by hand, plus the paper stock.
 5. **Handy Notebook** (📓 button in Little Town, in both Build and Walk). A bottom sheet: the town keeps running above it, so you can tap to walk with it open. 12 mediums, 12 colours, Undo, Clear, page ◀ ▶, **＋ Quick sketch** (new page, up to 24), **🏷️ Make a sticker** (cuts the drawing out with a white sticker edge and puts it in the Toy Box as a Sticker, with its medium tags). Pages saved as `craftloft_notebook` {pages:[{src, med}], i}. Leaving town closes it.
@@ -49,8 +52,8 @@ Code: search "v1.6b" (one block at the end of the main script, plus small hooks)
 - Choices made: glow lights up the whole piece (a soft halo in the glow colour), not just the glow-pen lines. That keeps saves small (no second picture per piece). A stroke-only glow would need a glow mask per part; that's a possible later upgrade.
 - Tests run (Playwright `Projects/tools/shoebox/test.js` + `checks-v16b.js`, 384x824 touch and 1920x1080): a real v1.5.2 save loads, every screen and tool opens, all 12 mediums drawn with real pointer strokes, all 9 stocks, Toy Box tags, filter and tag edit, notebook used while walking (hero walks with it open), Quick sketch, sticker, glow and glitter at night, reload keeps the notebook and art box. No page errors. 30/30.
 
-## What v1.6a added (built Nov 13, 2026 by Opus; ticket T013; on `dev`, NOT live)
-Waiting for the owner's look at the private preview. Do not merge to `main` until he says go. Code: search "v1.6a".
+## What v1.6a added (built Nov 13, 2026 by Opus; ticket T013; live since Nov 13 with v1.6c)
+Code: search "v1.6a". It was first sent as a patch/bundle in Drive (folder "Shoebox Studio v1.6a (dev, not live)"); the laptop run applied the bundle to `dev` unchanged and re-tested it.
 1. **Game clock, day and night.** One shared clock (`CLK`, save key `craftloft_clock` = {m: minutes 0..1440, sp: 1 normal, 2 fast, 0 paused}). One game day = 8 real minutes (`DAYSEC`). Dawn 5:00-7:00, day 7:00-17:00, dusk 17:00-19:30, night 19:30-5:00. Tints Little Town (`townNight`), the studio's round window and the house window (`skyCol`). The sun/moon button in the top bar (studio, house, town) opens the clock: pause/run, 2x, jump to day, jump to night.
 2. **Things behave like what they are.** Each town item has a behavior tag `it.act`: `vehicle`, `light`, `door` or `none` (`TACT`). Toys carry a default `toy.act`; the Toy Box dialog ("In Little Town it...") and the asset card both have the Behavior picker, and the town item bar has a button to change it per item.
    - Vehicles follow **road pieces** (toys with `road:1`; they lie flat under everything, snap to a 100 px grid and never block walking). They pick the straightest next piece, turn around at road ends, park on a lone piece, and stop when the hero is just ahead (`townActs`, `VEH`). Positions save every 8 s and when you leave town.
@@ -119,6 +122,9 @@ All of this is in `index.html`. Search for the comment titles below.
 - Book nooks: a later feature (tiny dioramas you make and slide between books). The bookshelf already has the gaps for them.
 
 ## Open questions (answer on a cheaper model)
+- **v1.6 (new):** Glow pieces light up as a whole (a soft halo). Should only the glow-pen lines glow instead? (Needs a second picture per piece, so bigger saves.)
+- **v1.6 (new):** The plan doc lists craft-material tags too (paper, clay, yarn, cardboard, realistic). Right now the Medium tag holds the drawing mediums plus the paper stock. Add material tags when clay and yarn crafting exist?
+- **v1.6 (new):** Retro 3D draws at about 640 px and scales up with chunky pixels. Keep that look, or sharper? Make a Level in 3D next, or the pet walking with you in 3D?
 - Keep Beat Bop Doodle's existing public site, or turn it off? (It is still on, and now links back to Shoebox Studio.)
 - **The house: what is it for?** Built so far: one room with the console. Ideas that fit the plan: your crafts on display (museum / fridge-gallery feel), pets sleeping in their beds, decorating with things you made, a place to save or rest. Which of these, and in what order?
 - **Where does the house stand?** Now: one house in Little Town at a default spot, and you can drag it. Should it also have a door from the studio lobby? (Quick jump already goes straight there.)
@@ -137,12 +143,12 @@ All of this is in `index.html`. Search for the comment titles below.
 4. Done as a simple first version (v1.4, live): house in Little Town, with the console that opens Beat Bop Doodle. Its full purpose is still open (see the questions).
 
 ## Next steps
-- Owner plays v1.5 on the live site and says what to change.
-- Owner plays the v1.6a private preview; push `dev` to `main` only after his go.
-- v1.6b (art mediums) and v1.6c (3D and first-person) are Fable orders. VHS spot with a cloth backdrop for the projector: planned, not built.
+- Owner plays v1.6 on the phone (live site) and says what to change. Most worth a look: Retro 3D on the real phone (speed, joystick feel), the art mediums at the School Desk, the Handy Notebook while walking.
+- VHS spot with a cloth backdrop for the projector: planned, not built (its own small order).
+- 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows), real 3D water and physics (from the plan doc).
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
 - Book nooks on the bookshelf.
 - More Story Shelf tutorials and worked examples.
-- Retro 3D mode (the planned work order from v1.3) and the other "coming soon" stations: Fridge Gallery, Supply Shop, Dress-up Mirror, Art Studio, Cork Board.
+- The other "coming soon" stations: Fridge Gallery, Supply Shop, Dress-up Mirror, Art Studio, Cork Board.
 - Recommendation: let buildings in Little Town hold levels (the "buildings are level doors" idea). The house code is a ready pattern for it.
