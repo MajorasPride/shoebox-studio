@@ -2,6 +2,9 @@
 
 _Last updated: Nov 12, 2026_
 
+## Vision
+- Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations, and each one stays its own standalone site so it can be updated by itself.
+
 ## Name
 - **Shoebox Studio**, tagline **Cut, Paste, Play**. Renamed from Craft Loft (and before that, Platformer Editor).
 - Short name: "Shoebox" or "SBS". Never "SS".
