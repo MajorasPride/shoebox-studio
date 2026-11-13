@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -28,6 +28,16 @@ _Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`;
 - Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
 - Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
+
+## VHS spot (built Nov 13, 2026 by Opus, ticket T020; on `dev` only, not live)
+Code: search "T020" and "VHS SPOT". The owner's idea (Q023, Q030 "Yes"): a saved flipbook becomes a named tape that plays in projector style in front of a hanging cloth backdrop.
+1. **Tape asset** (Toy Box type 📼 VHS tape): `{type:'tape', data:{aid, frames, fps, loop, label}}`. `aid` is the flipbook (animation asset) it came from; `frames`/`fps`/`loop` are a copy, so a tape still plays if that flipbook is deleted. `label` is `{p:0..2}` (one of 3 code-made labels in `TAPE_LABELS`: Masking tape, Rainbow sticker, Star paper, with the tape's name written on it) or `{toy:id}` (any Toy Box piece he made). `tapeClean` checks imports; export packs the page toys and the label toy. Old libraries load unchanged.
+2. **Save to tape** (`saveTapeStart`, `tapeDlg`): on the flipbook maker (📼 Save to tape: saves the flipbook, then the tape), on the "is in the Toy Box" screen after saving a flipbook, and in the projector menu (pick a saved flipbook). Pick a name and a label. "Draw a label at the School Desk" puts the tape on the shelf first and sends him to the desk; he saves the drawing to the Toy Box and picks it with 🏷️ Change a label on the shelf.
+3. **VHS Shelf station** (`STATIONS` id `vhs`, `STATION_DRAW.vhs`, left of the rug next to the projector): a cardboard shelf with the saved tapes as spines (first 16 drawn) and a tape player on top; a tape sticks out of the player while one is in it (`VHS.in`, not saved). Tap it: `vhsMenu` shows the shelf with every tape as a spine with its label; tap a spine to put it in and play; 🏷️ Change a label; 📼 Make a tape. It shows in Retro 3D like every station.
+4. **Player** (`vhsPlay`, `vhsFrame`, overlay `#vhs`, `OVL='vhs'`): a cloth hanging from a rod with soft folds and a slight sway, a warm light cone from the little tape player, faint tracking lines (more on pause and rewind), a small wobble, VCR words (PLAY, PAUSE, REW, STOP) and a tape counter 00:00 in the corner. Buttons: Rewind (6x back to the start), Play/Pause, Eject (tape out, back to the shelf), Back to the studio. Phone Back closes it. A flat 2D canvas effect; the projector's pull-down screen and flipbook player are not changed.
+5. **NES-style pages** (`kitPageStart`, `kitPageUI`, `kitPageSave`): 👾 Draw a pixel page on the flipbook maker opens the Pixel UI Kit editor in "page mode": the same 16 x 16 grid and tools with a small NES palette (`NES_PAL`), the kit's other sections hidden. Save page makes a "Pixel page N" piece (128 x 128, tagged "pixel page") and adds it as the next page; the next page starts as a copy of the last one. The kit's own draft is kept aside (`KIT.pgSave`) and comes back after, and `kitDraft` does not save while in page mode.
+- Tests run (Playwright, Galaxy S23 Ultra size 384x824 touch, and 1280x800): a v1.5.2 save loads; the VHS Shelf shows next to the projector and opens; a 3-page flipbook (2 pieces + 1 pixel page drawn on the kit grid) saved to a tape with a label; the shelf shows its spine; it plays on the cloth with tracking lines and counter; pause, rewind and eject work; phone Back closes it; the projector still plays the flipbook as before; reload keeps the tape; the label changed to a piece; export then import into a fresh save brings the tape back; Retro 3D opens with the station; the kit draft is untouched; no page errors.
+- Not checked: the owner's real phone.
 
 ## What v1.6c added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
 Code: `r3d.js` (the whole 3D view, an ES module) + `lib/three.module.min.js` (three.js r160, MIT, see CREDITS.md) + a small "v1.6c" block at the end of index.html's main script. The 3D files load only the first time you open 3D, so 2D is as light as before.
@@ -144,7 +154,7 @@ All of this is in `index.html`. Search for the comment titles below.
 
 ## Next steps
 - Owner plays v1.6 on the phone (live site) and says what to change. Most worth a look: Retro 3D on the real phone (speed, joystick feel), the art mediums at the School Desk, the Handy Notebook while walking.
-- VHS spot with a cloth backdrop for the projector: planned, not built (its own small order).
+- VHS spot (T020): built on `dev`, waiting for the owner's look on the private preview before it goes live.
 - 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows), real 3D water and physics (from the plan doc).
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
