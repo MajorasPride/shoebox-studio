@@ -220,6 +220,20 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #nbTools{display:flex;flex-direction:column;gap:5px}#nbMeds,#nbCols{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}#nbMeds::-webkit-scrollbar,#nbCols::-webkit-scrollbar{display:none}
 #nbMeds button{flex:0 0 auto;width:38px;height:36px;border-radius:9px;background:var(--paper);font-size:19px;box-shadow:0 2px 0 #0005}#nbMeds button.on{background:var(--yellow);outline:2px solid #fff}
 #nbCols button{flex:0 0 auto;width:28px;height:28px;border-radius:50%;box-shadow:0 2px 0 #0005,inset 0 0 0 2px #0002}#nbCols button.on{outline:3px solid #fff;outline-offset:1px}
+/* v1.6c: Retro 3D view and Make it 3D */
+#lob3d{background:var(--paper)}
+#r3d{position:fixed;inset:0;z-index:25;display:none;background:#2a1d14;touch-action:none;overflow:hidden}#r3d.on{display:block}
+#r3cv{position:absolute;inset:0;width:100%!important;height:100%!important;image-rendering:pixelated;touch-action:none}
+#r3top{position:absolute;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;padding:8px;padding-top:calc(8px + env(safe-area-inset-top));pointer-events:none}#r3top>*{pointer-events:auto}
+#r3top b{flex:1;color:#fff;text-shadow:0 2px 0 #0009;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#r3top button{flex:0 0 auto;height:42px;padding:0 14px;border-radius:21px;background:var(--paper);color:var(--ink);box-shadow:0 2px 0 #0006;font-size:14px;font-weight:900}
+#r3stick{position:absolute;left:22px;bottom:calc(28px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:rgba(251,246,234,.2);border:3px solid rgba(251,246,234,.75);touch-action:none}
+#r3stick i{position:absolute;left:37px;top:37px;width:50px;height:50px;border-radius:50%;background:var(--paper);box-shadow:0 3px 0 #0006;pointer-events:none}
+#r3act{position:absolute;right:16px;bottom:calc(64px + env(safe-area-inset-bottom));display:none;max-width:52vw;padding:12px 16px;border-radius:24px;background:var(--yellow);color:var(--ink);font-weight:900;font-size:15px;box-shadow:0 3px 0 #0006;text-align:left}#r3act.on{display:block}
+#r3hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(172px + env(safe-area-inset-bottom));color:#fff;background:#0007;padding:6px 12px;border-radius:14px;font-size:13px;white-space:nowrap;transition:opacity .6s;pointer-events:none}#r3hint.off{opacity:0}
+#r3fade{position:absolute;inset:0;background:#2a1d14;opacity:0;pointer-events:none;transition:opacity .25s}#r3fade.on{opacity:1}
+.pv3{display:block;width:100%;max-width:300px;height:230px;margin:4px auto 0;border-radius:10px;background:radial-gradient(#fbf6ea,#e7d3a8)}
+.m3s{display:flex;gap:6px;margin-top:8px}.m3s button{flex:1;padding:9px 4px;border-radius:10px;background:#eee4cf;font-size:13px;font-weight:900;line-height:1.2}.m3s button.on{background:var(--yellow);box-shadow:0 0 0 2px var(--ink) inset}
 </style>
 </head>
 <body>
@@ -231,7 +245,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
   <button class="tb" id="bBox" aria-label="Toy box">🧸<b id="nBox">0</b></button>
   <button class="tb" id="bClock" aria-label="Game clock">☀️<b></b></button><button class="tb" id="bFull" aria-label="Full screen">⛶</button><button class="tb" id="bSet" aria-label="Settings">⚙️</button>
 </div>
-<div id="lobbyUI" class="scr"><button id="lobGo"></button><div id="lobRow"><button id="lobMove">✋ Move things</button><button id="lobQuick">☰ Quick jump</button></div></div>
+<div id="lobbyUI" class="scr"><button id="lobGo"></button><div id="lobRow"><button id="lobMove">✋ Move things</button><button id="lob3d" aria-label="Retro 3D">🧊 3D</button><button id="lobQuick">☰ Quick jump</button></div></div>
 <div id="ovl"><div id="ovlBar"><button id="ovlBack">◀ Back to the studio</button><button id="ovlSave" style="display:none">💾 Save to Studio</button><div id="ovlTtl"></div><a id="ovlOut" target="_blank" rel="noopener" aria-label="Open on its own page" title="Open on its own page">↗</a></div><div id="ovlBox"></div></div>
 <div id="classUI" class="scr"><div id="classIn"></div></div>
 <div id="lesson"><div id="lesT"></div><div id="lesS"></div><div id="lesB"><button id="lesP">◀</button><span id="lesN"></span><button id="lesX">▶</button><button id="lesH">Hide</button><button id="lesQ">✕</button></div></div>
@@ -241,14 +255,14 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <div id="playUI" class="scr"><div id="hud"></div><button id="pStop">■ Stop</button><button id="pL">◀</button><button id="pR">▶</button><button id="pJ">⤒</button></div>
 <div id="boxUI" class="scr"><div id="boxIn"><div id="boxTools"><input id="boxQ" type="search" placeholder="🔎 Search names and tags" aria-label="Search the library" autocomplete="off"><div id="boxTypes"></div><div id="boxAct"><button id="bxExp">⬇️ Export all</button><button id="bxImp">⬆️ Import</button></div></div><div id="boxNote"></div><div id="boxGrid"></div></div></div>
 <div id="kitUI" class="scr"><div id="kitIn"></div></div>
-<div id="lvlBar"><div class="seg"><button class="on" id="mode2d" aria-label="2D mode">📄 2D</button><button class="lock" id="mode3d" aria-label="Retro 3D, coming soon">🔒 Retro 3D <small>soon</small></button></div><div class="seg"><button id="layW">🌍 World</button><button id="layH">🎛️ HUD</button></div></div>
+<div id="lvlBar"><div class="seg"><button class="on" id="mode2d" aria-label="2D mode">📄 2D</button><button id="mode3d" aria-label="Retro 3D">🧊 Retro 3D</button></div><div class="seg"><button id="layW">🌍 World</button><button id="layH">🎛️ HUD</button></div></div>
 <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
 <div id="proj"><canvas id="projCv"></canvas><div id="projBar"><button id="projBack">◀ Back to the studio</button><div id="projTtl"></div><button id="projAgain" style="display:none">↻ Again</button></div></div>
 <div id="dlg"><div id="dlgIn"></div></div>
 <div id="toast"></div>
 <script>
 'use strict';
-/* Shoebox Studio (was Craft Loft) v1.6b — by MajorasPride. All art, sound and music are made in code. No outside assets. */
+/* Shoebox Studio (was Craft Loft) v1.6c — by MajorasPride. All art, sound and music are made in code. No outside assets. */
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),g=cv.getContext('2d');
 let W=0,H=0,DPR=1,NOW=0,DT=0,SCR='title',FROM='',RESUMING=0;
@@ -267,7 +281,7 @@ let OVL=null;
 function openTool(id){const t=TOOLS[id];if(!t||OVL)return;OVL=id;$('#ovlSave').style.display=id==='bbd'?'':'none';closeDlg();$('#ovlTtl').textContent=t.name;$('#ovlBack').textContent=SCR==='house'?'◀ Back to the house':'◀ Back to the studio';$('#ovlOut').href=t.src;
   const f=document.createElement('iframe');f.title=t.name;f.setAttribute('allow','autoplay; fullscreen; clipboard-write');f.src=t.src;$('#ovlBox').append(f);$('#ovl').classList.add('on');$('#lobGo').style.display='none';setVol();
   try{history.pushState({sbsTool:id},'')}catch(e){}}
-function closeTool(fromBack){if(!OVL)return;if(OVL==='proj'){projClose(fromBack);return}OVL=null;$('#ovl').classList.remove('on');$('#ovlBox').innerHTML='';setVol();RM.near=undefined;try{SFX.tick()}catch(e){}
+function closeTool(fromBack){if(!OVL)return;if(OVL==='proj'){projClose(fromBack);return}if(OVL==='r3d'){if(R3&&R3.isOpen())R3.close();else OVL=null;if(!fromBack){try{if(history.state&&history.state.sbsTool)history.back()}catch(e){}}return}OVL=null;$('#ovl').classList.remove('on');$('#ovlBox').innerHTML='';setVol();RM.near=undefined;try{SFX.tick()}catch(e){}
   if(!fromBack){try{if(history.state&&history.state.sbsTool)history.back()}catch(e){}}}
 addEventListener('popstate',()=>{if(OVL)closeTool(true)});/* the phone's Back button closes the tool too */
 const SET=Object.assign({music:true,mv:.5,sv:.8,hand:1},LS.get('settings',{}));
@@ -300,7 +314,7 @@ const HANDS=['#f6d7bd','#e8b98f','#c98f62','#9a623c','#6b4226'];
 /* ---- toast, dialog ---- */
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2300)}
 function dlg(html,mount){$('#dlgIn').innerHTML=html;$('#dlg').classList.add('on');if(mount)mount($('#dlgIn'))}
-function closeDlg(){$('#dlg').classList.remove('on');$('#dlgIn').innerHTML=''}
+function closeDlg(){if(M3STOP){try{M3STOP()}catch(e){}M3STOP=null}$('#dlg').classList.remove('on');$('#dlgIn').innerHTML=''}
 $('#dlg').addEventListener('pointerdown',e=>{if(e.target.id==='dlg')closeDlg()});
 function ask(title,text,yes,fn){dlg('<h2>'+title+'</h2><p>'+text+'</p><div class="btns"><button class="alt" id="dNo">Keep it</button><button class="bad" id="dYes">'+yes+'</button></div>',d=>{d.querySelector('#dNo').onclick=closeDlg;d.querySelector('#dYes').onclick=()=>{closeDlg();fn()}})}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1061,15 +1075,15 @@ function go(s){nbClose();FROM=SCR;songStop();if(FROM==='town')LS.set('town',TOWN
 function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['house','🛋️','My House','A cozy room in Little Town, with a game console'],['shelf','📚','Bookshelf','Story Shelf: plan stories, worlds and characters'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat']];
   dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else if(b.dataset.q==='shelf')openTool('shelf');else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
 $('#ovlBack').onclick=()=>closeTool();
-$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lobMove').onclick=()=>{auInit();SFX.tick();setMove(!MOVE)};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
+$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lob3d').onclick=()=>{auInit();SFX.tick();if(MOVE)setMove(false);open3D(SCR==='house'?'house':'home')};$('#lobMove').onclick=()=>{auInit();SFX.tick();setMove(!MOVE)};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
 $('#bHome').onclick=()=>{auInit();SFX.tick();go('home')};$('#bBox').onclick=()=>{auInit();SFX.tick();go('box')};$('#bUndo').onclick=()=>{auInit();if(SCR==='kit')kitUndo();else undo()};
 /* ---- stage UI ---- */
 function buildStageUI(){const tray=$('#tray');tray.innerHTML='';tray.style.display=ST.walk?'none':'';$('#layW').classList.toggle('on',ST.layer!=='hud');$('#layH').classList.toggle('on',ST.layer==='hud');if(ST.kind==='level'&&ST.layer==='hud'){buildHudUI();return}if(!TOYS.length)tray.innerHTML='<div id="trayEmpty">Your toy box is empty. Make something in Craft first!</div>';
   TOYS.forEach(t=>{const b=document.createElement('button');b.className='tit'+(ST.arm===t.id?' on':'');const c=document.createElement('canvas'),s=document.createElement('span');thumb(c,t);s.textContent=t.name;b.append(c,s);b.onclick=()=>{auInit();SFX.tick();ST.arm=ST.arm===t.id?null:t.id;ST.sel=null;updItemBar();[...tray.children].forEach(x=>x.classList.remove('on'));if(ST.arm){b.classList.add('on');toast('Tap where it should go')}};tray.append(b)});
-  const sb=$('#stageBtns');sb.innerHTML='<button class="alt" id="sClr" '+(ST.walk?'style="visibility:hidden"':'')+'>🧹 Clear</button>'+(ST.kind==='level'?'<button class="alt" id="sSave">💾 Save</button><button id="sMus" aria-label="Level music" title="Level music">🎵</button><button id="sPlay">▶ Play</button>':(ST.walk?'':'<button class="alt" id="sShow" aria-label="Reset to showcase town" title="Reset to showcase town">🏙️ Showcase</button>')+'<button class="alt" id="sNote" aria-label="Handy Notebook" title="Handy Notebook">📓</button><button id="sWalk">'+(ST.walk?'🔨 Build':'🚶 Walk around')+'</button>');
+  const sb=$('#stageBtns');sb.innerHTML='<button class="alt" id="sClr" '+(ST.walk?'style="visibility:hidden"':'')+'>🧹 Clear</button>'+(ST.kind==='level'?'<button class="alt" id="sSave">💾 Save</button><button id="sMus" aria-label="Level music" title="Level music">🎵</button><button id="sPlay">▶ Play</button>':(ST.walk?'':'<button class="alt" id="sShow" aria-label="Reset to showcase town" title="Reset to showcase town">🏙️ Showcase</button>')+'<button class="alt" id="s3d" aria-label="Retro 3D" title="Retro 3D">🧊 3D</button><button class="alt" id="sNote" aria-label="Handy Notebook" title="Handy Notebook">📓</button><button id="sWalk">'+(ST.walk?'🔨 Build':'🚶 Walk around')+'</button>');
   sb.querySelector('#sClr').onclick=()=>ask('Clear everything?','This takes every piece off the '+(ST.kind==='level'?'level':'table')+'. Your toy box stays as it is.','Clear it',()=>{ST.d.items=[];ST.sel=null;saveStage();updItemBar();SFX.crumple()});
   if(ST.kind==='level'){sb.querySelector('#sMus').onclick=()=>{auInit();SFX.tick();levelMusicDlg()};updMusBtn();sb.querySelector('#sPlay').onclick=()=>{auInit();startPlay()};sb.querySelector('#sSave').onclick=()=>{auInit();SFX.tick();saveLevelAsset()}}else{if(!ST.walk)sb.querySelector('#sShow').onclick=()=>{auInit();SFX.tick();resetShowTown()}}if(ST.kind!=='level')sb.querySelector('#sWalk').onclick=()=>{auInit();SFX.tick();ST.walk=!ST.walk;LS.set('where',{s:'town',walk:ST.walk?1:0});ST.sel=null;ST.arm=null;ST.tgt=null;if(ST.walk)toast('Tap or drag where you want to walk');buildStageUI()};
-  {const nb=sb.querySelector('#sNote');if(nb)nb.onclick=()=>{SFX.tick();nbOpen()}}/* v1.6b */
+  {const nb=sb.querySelector('#sNote');if(nb)nb.onclick=()=>{SFX.tick();nbOpen()};const b3=sb.querySelector('#s3d');if(b3)b3.onclick=()=>{SFX.tick();open3D('town')}}/* v1.6c *//* v1.6b */
   updItemBar()}
 function updItemBar(){if(ST.kind==='level'&&ST.layer==='hud'){updHudBar();return}const bar=$('#itemBar'),it=ST.sel;if(!it||ST.walk||ST.play){bar.classList.remove('on');bar.innerHTML='';return}bar.classList.add('on');
   bar.innerHTML='<button data-a="sm">➖</button><button data-a="bg">➕</button><button data-a="fl">↔️</button>'+(ST.kind==='level'?'<button data-a="bh">'+BEH[it.beh].em+' '+BEH[it.beh].name+'</button>':'')+(ST.kind==='level'?'<button data-a="up">⬆️</button><button data-a="dn">⬇️</button>':'<button data-a="tb">'+TBEH[it.tb||'block'].em+' '+TBEH[it.tb||'block'].name+'</button><button data-a="ac">'+TACT[it.act||'none'].em+' '+TACT[it.act||'none'].name+'</button>')+'<button data-a="rm">🗑️</button>';
@@ -1251,9 +1265,9 @@ $('#boxQ').addEventListener('input',e=>{BOXF.q=e.target.value;renderBoxGrid()});
 $('#bxExp').onclick=()=>{auInit();SFX.tick();if(!LIB.length){toast('The Toy Box is empty');return}download('shoebox-studio-library-'+new Date().toISOString().slice(0,10)+'.json',libPack(LIB))};
 $('#bxImp').onclick=()=>{auInit();SFX.tick();importDlg()};
 function assetDlg(a){const toy=a.ref&&toyById(a.ref),types=toy?['piece','creature','tile','sticker']:[a.type],use=toy?['dD','✂️ Copy to desk']:a.type==='ui'?['dK','🎨 Edit in UI Kit']:a.type==='level'?['dL','🚩 Open in Make a Level']:a.type==='animation'?['dP','▶ Play on projector']:a.type==='music'?['dM','▶ Listen']:null;
-  dlg('<h2>'+ATYPES[a.type].em+' '+esc(a.name)+'</h2><canvas class="pv" id="pv"></canvas><label class="lb" for="an">Name</label><input type="text" id="an" maxlength="24" value="'+esc(a.name)+'"><label class="lb" for="aty">Type</label><select id="aty"'+(types.length<2?' disabled':'')+'>'+types.map(t=>'<option value="'+t+'"'+(t===a.type?' selected':'')+'>'+ATYPES[t].em+' '+ATYPES[t].name+'</option>').join('')+'</select>'+(toy&&!toy.road?'<label class="lb" for="aac">In Little Town it...</label><select id="aac">'+actOpts(toy.act)+'</select>':'')+assetMedHTML(a)+'<label class="lb" for="atg">Tags (comma between)</label><input type="text" id="atg" maxlength="80" value="'+esc((a.tags||[]).join(', '))+'"><p style="font-size:12px;opacity:.75">Saved '+esc(fmtDate(a.date))+'</p><div class="btns"><button id="dS">💾 Save</button>'+(use?'<button class="alt" id="'+use[0]+'">'+use[1]+'</button>':'')+'<button class="alt" id="dU">👯 Duplicate</button><button class="alt" id="dE">⬇️ Export</button><button class="bad" id="dR">🗑️ Delete</button></div>',d=>{assetThumb(d.querySelector('#pv'),a);const q=k=>d.querySelector(k);assetMedMount(d);
+  dlg('<h2>'+ATYPES[a.type].em+' '+esc(a.name)+'</h2><canvas class="pv" id="pv"></canvas><label class="lb" for="an">Name</label><input type="text" id="an" maxlength="24" value="'+esc(a.name)+'"><label class="lb" for="aty">Type</label><select id="aty"'+(types.length<2?' disabled':'')+'>'+types.map(t=>'<option value="'+t+'"'+(t===a.type?' selected':'')+'>'+ATYPES[t].em+' '+ATYPES[t].name+'</option>').join('')+'</select>'+(toy&&!toy.road?'<label class="lb" for="aac">In Little Town it...</label><select id="aac">'+actOpts(toy.act)+'</select>':'')+assetMedHTML(a)+'<label class="lb" for="atg">Tags (comma between)</label><input type="text" id="atg" maxlength="80" value="'+esc((a.tags||[]).join(', '))+'"><p style="font-size:12px;opacity:.75">Saved '+esc(fmtDate(a.date))+'</p><div class="btns"><button id="dS">💾 Save</button>'+(use?'<button class="alt" id="'+use[0]+'">'+use[1]+'</button>':'')+(toy?'<button class="alt" id="dZ">🧊 Make it 3D</button>':'')+'<button class="alt" id="dU">👯 Duplicate</button><button class="alt" id="dE">⬇️ Export</button><button class="bad" id="dR">🗑️ Delete</button></div>',d=>{assetThumb(d.querySelector('#pv'),a);const q=k=>d.querySelector(k);assetMedMount(d);
     q('#dS').onclick=()=>{const nm=(q('#an').value||a.name).trim().slice(0,24)||a.name;a.name=nm;a.tags=parseTags(q('#atg').value);if(types.length>1)a.type=q('#aty').value;if(toy){toy.name=nm;assetMedSave(d,toy);if(q('#aac'))toy.act=q('#aac').value;saveToys()}if(a.data&&a.type==='ui')a.data.name=nm;saveLib();SFX.tick();closeDlg();renderBox();toast('Saved')};
-    q('#dU').onclick=()=>{closeDlg();libDuplicate(a)};
+    q('#dU').onclick=()=>{closeDlg();libDuplicate(a)};if(toy)q('#dZ').onclick=()=>{SFX.tick();m3dDlg(toy)};
     q('#dE').onclick=()=>{download('shoebox-studio-'+a.name.replace(/[^\w-]+/g,'-').toLowerCase()+'.json',libPack([a]))};
     q('#dR').onclick=()=>ask('Delete '+esc(a.name)+'?',a.type==='ui'?'It leaves the Toy Box. HUDs that already use it keep their copy.':toy?'It leaves the Toy Box and any level or town that uses it. This cannot be undone.':'It leaves the Toy Box. This cannot be undone.','Delete it',()=>libDelete(a));
     if(use)q('#'+use[0]).onclick=()=>{if(toy){closeDlg();go('craft');toyToDesk(toy);C.cat='hand';C.tool='hand';renderTabs();toast('A copy is on your desk')}else if(a.type==='ui'){const p=uiClean(a.data);if(!p){toast('This part cannot be opened');return}KIT.part=p;KIT.aid=a.id;KIT.undo=[];kitDraft(true);go('kit')}else if(a.type==='animation'){projPlay(a)}else if(a.type==='music'){if(AU.song){songStop();q('#dM').textContent='▶ Listen'}else{songPlay(a.data,false);q('#dM').textContent='■ Stop'}}else{const L=lvlClean(a.data);if(!L){toast('This level cannot be opened');return}ask('Open '+esc(a.name)+'?','It replaces the level on your table. Save that one first if you want to keep it.','Open it',()=>{LVL=L;LS.set('level',LVL);go('level');toast(a.name+' is ready')})}}})}
@@ -1328,7 +1342,7 @@ function updHudBar(){const bar=$('#itemBar'),el=ST.hsel,hd=LVL.hud;if(!el||ST.pl
 $('#layW').onclick=()=>{SFX.tick();ST.layer='world';ST.hsel=null;buildStageUI()};
 $('#layH').onclick=()=>{SFX.tick();ST.layer='hud';ST.sel=null;ST.arm=null;hudOf();buildStageUI();toast('HUD layer: tap a UI part below to place it')};
 $('#mode2d').onclick=()=>{SFX.tick();toast('2D paper mode is on')};
-$('#mode3d').onclick=()=>{SFX.tick();toast('Retro 3D is coming soon. This build is 2D.')};
+$('#mode3d').onclick=()=>{SFX.tick();if(ST.kind==='level'){toast('Retro 3D is for Little Town, the studio and your house. Levels come later.');return}open3D('town')};/* v1.6c */
 /* ---- play: getting hurt and picking things up ---- */
 function hurt(fell){const h=ST.hero,dmg=Math.max(1,Math.round(ST.hpMax/5));if(fell){ST.hp-=dmg;SFX.ouch();if(ST.hp<=0){ST.hp=ST.hpMax;toast('Out of health! Back to the start.')}respawn();ST.invT=1;return true}
   if(ST.invT>0)return false;ST.hp=Math.max(0,ST.hp-dmg);ST.invT=1.1;SFX.ouch();h.vy=-520;h.on=false;h.coy=0;h.vx=-h.face*260;
@@ -1356,7 +1370,7 @@ function drawBack(dim){g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(0,0
 function drawHome(){drawBack(.12);const rows=['SHOEBOX','STUDIO'],ts=Math.min(54,W/8.6,H*.34/2.9),top=Math.max(54,H*.38/2-ts*1.25);g.textAlign='center';g.textBaseline='middle';
   rows.forEach((row,ri)=>{const n=row.length,x0=W/2-(n-1)*ts*1.08/2;for(let i=0;i<n;i++){const k=ri*7+i,a=Math.sin(k*2.3)*.13+Math.sin(NOW/900+k)*.015;g.save();g.translate(x0+i*ts*1.08,top+ri*ts*1.22+ts/2+Math.sin(k*1.7)*3);g.rotate(a);g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6*DPR;g.shadowOffsetY=3*DPR;g.fillStyle='#fbf6ea';g.fillRect(-ts/2,-ts/2,ts,ts);g.shadowColor='transparent';g.fillStyle=PAPERS[(k*3+ri)%9];g.fillRect(-ts/2+3,-ts/2+3,ts-6,ts-6);g.fillStyle=((k*3+ri)%9===2)?'#3b2f2a':'#fff';g.font='900 '+(ts*.72)+'px ui-rounded,system-ui,sans-serif';g.fillText(row[i],0,ts*.04);g.restore()}});
   g.save();g.translate(W/2,top+ts*2.62);g.rotate(-.025);g.fillStyle='rgba(250,240,190,.92)';const tw=Math.min(W-40,250);g.fillRect(-tw/2,-13,tw,26);g.fillStyle='#3b2f2a';g.font='800 13.5px ui-rounded,system-ui,sans-serif';g.fillText('Cut  ·  Paste  ·  Play',0,1);g.restore();
-  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.6b · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
+  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.6c · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
 /* ================= v1.6a: LIVING TOWN, FLIP PAPER, PROJECTOR, CONSOLE SAVE (Nov 13, 2026, ticket T013) ================= */
 /* ---- the game clock: one shared clock for Little Town, the studio window and the house window ----
    CLK.m = minutes into the game day (0..1440). One game day = 8 real minutes (DAYSEC). CLK.sp = 1 normal, 2 fast, 0 paused.
@@ -1675,6 +1689,19 @@ function nbSticker(){if(nbBlank()){toast('Draw something first');return}const d=
   const n=TOYS.filter(t=>/^Sketch /.test(t.name)).length+1,toy={id:'t'+Date.now().toString(36),name:'Sketch '+n,w:cw,h:ch,beh:'scenery',act:'none',med:medCopy(nbPage().med),parts:[{src:c.toDataURL(),x:0,y:0,w:cw,h:ch,parent:-1,px:0,py:0,z:0}]};
   dlg('<h2>🏷️ Make a sticker</h2><canvas class="pv" id="pv"></canvas><label class="lb" for="nbN">Name</label><input type="text" id="nbN" maxlength="24" value="'+esc(toy.name)+'"><p style="font-size:12px;margin:4px 0 0">'+esc(medLabel(toy.med))+'</p><div class="btns"><button class="alt" id="dNo">Cancel</button><button id="dYes">Into the toy box</button></div>',dd=>{thumb(dd.querySelector('#pv'),toy);dd.querySelector('#dNo').onclick=()=>{delete SPR[toy.id];closeDlg()};
     dd.querySelector('#dYes').onclick=()=>{toy.name=(dd.querySelector('#nbN').value||toy.name).trim().slice(0,24)||toy.name;TOYS.push(toy);if(!saveToys()){TOYS.pop();toast('The toy box is full. Remove a toy first.');return}libAddToy(toy,'sticker');closeDlg();updBadge();if(SCR==='town'||SCR==='level')buildStageUI();SFX.thud();toast(toy.name+' is in the toy box')}})}
+
+/* ================= v1.6c: RETRO 3D ================= */
+/* The 3D code lives in r3d.js and three.js (lib/), loaded only the first time you open 3D, so 2D stays as light as before. */
+var R3=null,M3STOP=null;
+function r3dLoad(){return R3?Promise.resolve(R3):import('./r3d.js').then(m=>(R3=m))}
+function open3D(where){if(OVL)return;auInit();nbClose();closeDlg();OVL='r3d';setVol();$('#lobGo').style.display='none';toast('Opening Retro 3D…');
+  r3dLoad().then(m=>m.open(where)).then(ok=>{if(ok===false){OVL=null;return}try{history.pushState({sbsTool:'r3d'},'')}catch(e){}}).catch(e=>{console.warn(e);OVL=null;setVol();toast('Retro 3D could not load. Check the connection and try again.')})}
+/* Make it 3D: a drawing becomes a flat cutout, a fold-up papercraft or a puffy clay piece (toy.m3d). Little Town 3D uses it. */
+const M3D={flat:{em:'🪧',name:'Cutout',tip:'A cardboard stand-up, like now.'},paper:{em:'📦',name:'Papercraft',tip:'Folds up out of the paper into a thick layered piece with a stand.'},clay:{em:'🫓',name:'Puffy clay',tip:'Puffs up like squishy clay, round in the middle.'}};
+function m3dDlg(toy){let st=toy.m3d||'flat';const show=()=>{if(M3STOP){M3STOP();M3STOP=null}const c=$('#pv3');if(!c)return;const n=c.cloneNode();c.replaceWith(n);r3dLoad().then(m=>m.preview(n,toy,st)).then(stop=>{if($('#pv3')===n)M3STOP=stop;else stop()}).catch(()=>toast('3D could not load'))};
+  dlg('<h2>🧊 Make it 3D</h2><canvas class="pv3" id="pv3"></canvas><div class="m3s">'+Object.keys(M3D).map(k=>'<button data-s="'+k+'" class="'+(k===st?'on':'')+'">'+M3D[k].em+'<br>'+M3D[k].name+'</button>').join('')+'</div><p id="m3tip" style="font-size:12.5px;margin:6px 0 0">'+M3D[st].tip+'</p><p style="font-size:12px;opacity:.75;margin:4px 0 0">You see it this way in Retro 3D. 2D stays the same.</p><div class="btns"><button class="alt" id="dNo">Cancel</button><button id="dYes">Save</button></div>',d=>{
+    d.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st=b.dataset.s;SFX.tick();d.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x===b));d.querySelector('#m3tip').textContent=M3D[st].tip;show()});
+    d.querySelector('#dNo').onclick=closeDlg;d.querySelector('#dYes').onclick=()=>{if(st==='flat')delete toy.m3d;else toy.m3d=st;saveToys();closeDlg();SFX.thud();toast(toy.name+': '+M3D[st].name+' in Retro 3D')};setTimeout(show,30)})}
 
 </script>
 </body>
