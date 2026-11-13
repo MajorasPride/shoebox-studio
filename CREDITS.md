@@ -6,6 +6,7 @@ Shoebox Studio's art, sound and music are made in code by MajorasPride. There ar
 | What | Where | Version | License | Used for |
 |---|---|---|---|---|
 | three.js | `lib/three.module.min.js` | r160 | MIT, full text in `lib/THREE-LICENSE.txt` (Copyright 2010-2023 three.js authors) | Retro 3D mode and Make it 3D (`r3d.js`). Only loaded when you open 3D. |
+| three-mesh-bvh | `lib/three-mesh-bvh.module.min.js` | 0.7.8 (only `MeshBVH`, bundled with esbuild, imports three from `./three.module.min.js`) | MIT, full text in `lib/THREE-MESH-BVH-LICENSE.txt` (Copyright 2018 Garrett Johnson) | Retro 3D: the camera stops at walls and solid things (T029). Only loaded when you open 3D. |
 
 ## Built-in tools (our own)
 - Story Shelf (`story-shelf/`) and Beat Bop Doodle (`beat-bop-doodle/`) are MajorasPride's own games. Beat Bop Doodle's pixel font loads from Google Fonts when online (SIL Open Font License); without the internet a plain font shows.

@@ -1,12 +1,16 @@
-/* Shoebox Studio v1.6c: Retro 3D. By MajorasPride. Loaded only when you open 3D (index.html: open3D, m3dDlg).
+/* Shoebox Studio v1.6c + T029: Retro 3D. By MajorasPride. Loaded only when you open 3D (index.html: open3D, m3dDlg).
    Little Town, the studio and the house are low-poly shoebox dioramas built from the same save data as 2D
    (TOWN, LOB, HOUSE, the Toy Box). Crafted pieces stand up as cardboard cutouts, or as papercraft / puffy clay
    when you used Make it 3D (toy.m3d). First-person walk: thumb joystick + drag to look (WASD + mouse on a PC).
+   T029: only moving things (cars) turn to face you; everything else keeps the facing set in Build mode (it.rot, see faceStep in index.html).
+   Stationary cutouts have a cardboard edge so they never vanish side-on (thickCut). Signs are small cardboard plaques on the front of
+   their object, sized to it (signBox). Walls and solid things stop the camera (three-mesh-bvh, lib/three-mesh-bvh.module.min.js, MIT).
    Uses three.js r160 (MIT, lib/three.module.min.js). All art is made in code or taken from the game's own drawings.
    This file reads the game's globals (TOWN, TW, toyById, drawToy, sprite, STATION_DRAW, nightK, ...) directly. */
 import * as THREE from './lib/three.module.min.js';
+import { MeshBVH } from './lib/three-mesh-bvh.module.min.js';
 
-const EYE = 64, SPEED = 175, RAD = 15;
+const EYE = 64, SPEED = 175, RAD = 15, CR = 22 /* the camera stays this far off walls and solid things */, THICK = 8 /* cardboard edge */;
 let R = null; /* the running 3D view */
 
 /* ---------- small helpers ---------- */
@@ -25,13 +29,45 @@ function glowTex() { const c = cvs(64, 64), x = c.getContext('2d'), g = x.create
 function blobTex() { const c = cvs(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(0,0,0,.42)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return texOf(c); }
 function sparkTex() { const c = cvs(32, 32), x = c.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.moveTo(16, 0); x.quadraticCurveTo(16, 16, 32, 16); x.quadraticCurveTo(16, 16, 16, 32); x.quadraticCurveTo(16, 16, 0, 16); x.quadraticCurveTo(16, 16, 16, 0); x.fill(); return texOf(c); }
 let GLOW, BLOB, SPARK;
-function labelSprite(text, sub) {
-  const c = cvs(320, sub ? 104 : 72), x = c.getContext('2d'); x.font = '900 34px system-ui,sans-serif'; const w = Math.min(300, Math.max(x.measureText(text).width, sub ? (x.font = '700 22px system-ui', x.measureText(sub).width) : 0) + 34);
-  x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(160 - w / 2 + 4, 8, w, c.height - 12); x.fillStyle = '#fbf6ea'; x.fillRect(160 - w / 2, 4, w, c.height - 12);
-  x.fillStyle = '#3b2f2a'; x.textAlign = 'center'; x.font = '900 34px system-ui,sans-serif'; x.fillText(text, 160, 44, 290); if (sub) { x.font = '700 22px system-ui,sans-serif'; x.globalAlpha = .7; x.fillText(sub, 160, 80, 290); }
-  const m = new THREE.SpriteMaterial({ map: texOf(c), depthWrite: false, transparent: true }), s = new THREE.Sprite(m); s.scale.set(110, 110 * c.height / 320, 1); s.renderOrder = 5; return s;
-}
 const lam = (o) => new THREE.MeshLambertMaterial(o);
+/* T029: a name plaque made of cardboard (a thin box): the name on the front, plain cardboard everywhere else, sized to its object */
+function labelCanvas(text, sub) {
+  const S = 2, m = cvs(8, 8).getContext('2d'); m.font = '900 34px system-ui,sans-serif'; let tw = m.measureText(text).width; if (sub) { m.font = '700 22px system-ui,sans-serif'; tw = Math.max(tw, m.measureText(sub).width); }
+  const pw = Math.min(300, tw + 34), ph = sub ? 92 : 60, c = cvs(pw * S, ph * S), x = c.getContext('2d'); x.scale(S, S);
+  x.fillStyle = '#fbf6ea'; x.fillRect(0, 0, pw, ph); x.strokeStyle = 'rgba(90,60,30,.35)'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, pw - 3, ph - 3);
+  x.fillStyle = '#3b2f2a'; x.textAlign = 'center'; x.font = '900 34px system-ui,sans-serif'; x.fillText(text, pw / 2, 42, pw - 20); if (sub) { x.font = '700 22px system-ui,sans-serif'; x.globalAlpha = .7; x.fillText(sub, pw / 2, 76, pw - 20); }
+  return c;
+}
+function signBox(text, sub, width) {
+  const c = labelCanvas(text, sub), sw = width, sh = sw * c.height / c.width, card = lam({ color: 0xb98d58 }), front = lam({ map: texOf(c) });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, 3), [card, card, card, card, front, card]); m.userData.sign = { w: sw, h: sh }; return m;
+}
+/* T029: a cutout with a cardboard edge. The drawing's shape is traced on a small grid and the edge is built along it (chunky, retro),
+   the drawing is on the front and, a little darker, on the back, so a cutout seen from the side never disappears and from behind is still a tree, not a blank card. */
+function maskOf(c, n) {
+  const k = n / Math.max(c.width, c.height), nx = Math.max(2, Math.round(c.width * k)), ny = Math.max(2, Math.round(c.height * k)), s = cvs(nx, ny), x = s.getContext('2d');
+  x.drawImage(c, 0, 0, nx, ny); const a = x.getImageData(0, 0, nx, ny).data, m = new Uint8Array(nx * ny); for (let i = 0; i < m.length; i++) m[i] = a[i * 4 + 3] > 115 ? 1 : 0; return { nx, ny, m };
+}
+function edgeGeom(c, w, h, d, ox = 0, oy = 0) {
+  const { nx, ny, m } = maskOf(c, 72), cw = w / nx, ch = h / ny, P = [], N = [], z0 = -d / 2, z1 = d / 2;
+  const at = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny ? m[j * nx + i] : 0, X = i => ox - w / 2 + i * cw, Y = j => oy + h - j * ch;
+  const quad = (a, b, cc, dd, n) => { P.push(...a, ...b, ...cc, ...a, ...cc, ...dd); for (let t = 0; t < 6; t++) N.push(...n); };
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    if (!at(i, j)) continue; const xa = X(i), xb = X(i + 1), ya = Y(j), yb = Y(j + 1);
+    if (!at(i - 1, j)) quad([xa, ya, z0], [xa, yb, z0], [xa, yb, z1], [xa, ya, z1], [-1, 0, 0]);
+    if (!at(i + 1, j)) quad([xb, ya, z1], [xb, yb, z1], [xb, yb, z0], [xb, ya, z0], [1, 0, 0]);
+    if (!at(i, j - 1)) quad([xa, ya, z1], [xb, ya, z1], [xb, ya, z0], [xa, ya, z0], [0, 1, 0]);
+    if (!at(i, j + 1)) quad([xa, yb, z0], [xb, yb, z0], [xb, yb, z1], [xa, yb, z1], [0, -1, 0]);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); return g;
+}
+function thickCut(c, frontMat, w, h, d, edgeCol, ox = 0, oy = 0) {
+  const grp = new THREE.Group(), plane = () => new THREE.PlaneGeometry(w, h).translate(ox, oy + h / 2, 0);
+  const front = new THREE.Mesh(plane().translate(0, 0, d / 2 + .05), frontMat);
+  const back = new THREE.Mesh(plane().translate(0, 0, -d / 2 - .05), lam({ map: frontMat.map || texOf(c), color: 0xd2bd9a, alphaTest: .5, side: THREE.DoubleSide }) /* the back shows the drawing a little darker, like it is printed through the card */);
+  const edge = new THREE.Mesh(edgeGeom(c, w, h, d, ox, oy), lam({ color: edgeCol, side: THREE.DoubleSide }));
+  grp.add(front, back, edge); grp.userData.edgeMats = [back.material, edge.material]; return grp;
+}
 
 /* ---------- 3D pieces: cutout, papercraft, puffy clay ---------- */
 async function pieceMesh(toy, style, opt = {}) {
@@ -51,8 +87,9 @@ async function pieceMesh(toy, style, opt = {}) {
     grp.userData.fold = { layers, t: opt.instant ? 1 : 0, tab };
     foldStep(grp, opt.instant ? 1 : 0);
   } else {
-    const m = mat(); mats.push(m); grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), m));
-    if (!opt.noFoot) { const foot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w * .5, 70), 5, 18), lam({ color: 0xb48a58 })); foot.position.set(0, 2.5, -9); grp.add(foot); }
+    const m = mat(); mats.push(m); const d = opt.thick ? Math.max(3, Math.min(THICK, Math.min(w, h) * .12)) : 0;
+    if (d) grp.add(thickCut(c, m, w, h, d, 0xe6d8bc)); else grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), m));
+    if (!opt.noFoot) { const foot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w * .5, 70), 5, 18), lam({ color: 0xb48a58 })); foot.position.set(0, 2.5, -9 - d / 2); grp.add(foot); }
   }
   grp.userData.mats = mats; grp.userData.glow = glow; grp.userData.toy = toy; grp.userData.style = style;
   if (toy.med && toy.med.gl) grp.add(sparkles(w, h, style === 'flat' ? 0 : 1));
@@ -90,9 +127,10 @@ function building(kind) {
   if (kind === 'house') { const rh = b.top * .34, sh = new THREE.Shape(); sh.moveTo(-bw / 2 - 10, 0); sh.lineTo(bw / 2 + 10, 0); sh.lineTo(0, rh); sh.closePath(); const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: dp + 8, bevelEnabled: false }), lam({ color: 0xc8463a, flatShading: true })); roof.position.set(0, bh, -dp - 4); grp.add(roof); }
   else { const lid = new THREE.Mesh(new THREE.BoxGeometry(bw + 20, 6, 60), lam({ color: 0xd8b07a })); lid.position.set(0, bh + 4, 6); lid.rotation.x = -.25; grp.add(lid); }
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(bw * 1.4, dp * 1.5), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.set(0, .6, -dp / 2 + 10); grp.add(blob);
-  const tag = labelSprite(kind === 'house' ? 'My House' : 'The Studio', 'walk to the door'); tag.position.set(0, b.top + 40, 0); grp.add(tag);
+  /* T029: the name sign stands on top of the front, sized to the building (was a big floating label) */
+  const tag = signBox(kind === 'house' ? 'My House' : 'The Studio', 'walk to the door', Math.max(80, Math.min(150, bw * .6))); tag.position.set(0, base + 2 + tag.userData.sign.h / 2, 3); grp.add(tag);
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); glow.scale.set(bw * 1.3, bh * 1.3, 1); glow.position.set(0, bh * .55, 14); grp.add(glow);
-  grp.position.set(p.x, 0, p.y); grp.userData = { kind, glow, front, door: { x: p.x + b.door.x, z: p.y + b.door.y }, box: { x0: p.x - bw / 2, x1: p.x + bw / 2, z0: p.y - dp, z1: p.y + 4 } };
+  grp.position.set(p.x, 0, p.y); grp.userData = { kind, glow, front, door: { x: p.x + b.door.x, z: p.y + b.door.y }, box: { x0: p.x - bw / 2, x1: p.x + bw / 2, z0: p.y - dp, z1: p.y + 4 }, solid: { x: p.x, z: p.y - dp / 2 + 3, w: Math.max(bw, b.hw * 1.9), d: dp + 6, h: 240 } };
   return grp;
 }
 
@@ -104,7 +142,7 @@ function baseScene() {
 }
 function woodPlane(size) { const t = texOf(WOOD, { rep: [size / 256, size / 256] }); const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), lam({ map: t })); m.rotation.x = -Math.PI / 2; return m; }
 async function buildTown() {
-  const sc = baseScene(), col = [];
+  const sc = baseScene(), col = [], solids = [];
   const wood = woodPlane(6000); wood.position.set(TW.W / 2, -3, TW.H / 2); sc.add(wood);
   /* the town paper: same kraft, grid, tape corners and title as 2D */
   const k = .64, c = cvs(TW.W * k, TW.H * k), x = c.getContext('2d'); x.scale(k, k); x.fillStyle = x.createPattern(KRAFT, 'repeat'); x.fillRect(0, 0, TW.W, TW.H); x.strokeStyle = 'rgba(90,60,30,.13)'; x.lineWidth = 2; x.beginPath(); for (let i = 100; i < TW.W; i += 100) { x.moveTo(i, 0); x.lineTo(i, TW.H); } for (let j = 100; j < TW.H; j += 100) { x.moveTo(0, j); x.lineTo(TW.W, j); } x.stroke();
@@ -113,35 +151,39 @@ async function buildTown() {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(TW.W, TW.H), lam({ map: texOf(c) })); floor.rotation.x = -Math.PI / 2; floor.position.set(TW.W / 2, 0, TW.H / 2); sc.add(floor);
   /* shoebox walls around the town, open at the top */
   const wallM = lam({ color: 0xc9a46a }), lipM = lam({ color: 0xb08850 }), WH = 150;
-  [[TW.W / 2, -6, TW.W + 24, 12], [TW.W / 2, TW.H + 6, TW.W + 24, 12], [-6, TW.H / 2, 12, TW.H], [TW.W + 6, TW.H / 2, 12, TW.H]].forEach(([cx, cz, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, WH, d), wallM); m.position.set(cx, WH / 2 - 4, cz); sc.add(m); const lip = new THREE.Mesh(new THREE.BoxGeometry(w + 4, 6, d + 4), lipM); lip.position.set(cx, WH - 2, cz); sc.add(lip); });
+  [[TW.W / 2, -6, TW.W + 24, 12], [TW.W / 2, TW.H + 6, TW.W + 24, 12], [-6, TW.H / 2, 12, TW.H], [TW.W + 6, TW.H / 2, 12, TW.H]].forEach(([cx, cz, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, WH, d), wallM); m.position.set(cx, WH / 2 - 4, cz); sc.add(m); solids.push({ x: cx, z: cz, w, d, h: WH }); const lip = new THREE.Mesh(new THREE.BoxGeometry(w + 4, 6, d + 4), lipM); lip.position.set(cx, WH - 2, cz); sc.add(lip); });
   /* buildings */
-  const blds = ['house', 'studio'].map(building); blds.forEach(b => { sc.add(b); col.push(b.userData.box); });
+  const blds = ['house', 'studio'].map(building); blds.forEach(b => { sc.add(b); solids.push(b.userData.solid); });
   /* pieces */
   const items = [];
   for (const it of TOWN.items) {
     const toy = toyById(it.toy); if (!toy) continue; const s = it.s || 1;
     if (toy.road) { const c2 = await toyCanvas(toy), m = new THREE.Mesh(new THREE.PlaneGeometry(toy.w * s, toy.h * s), lam({ map: texOf(c2), alphaTest: .4, polygonOffset: true, polygonOffsetFactor: -1 })); m.rotation.x = -Math.PI / 2; m.position.set(it.x, .4 + items.length * .002, it.y - toy.h * s / 2); sc.add(m); continue; }
-    const g = await pieceMesh(toy, null, { instant: 1 }); g.scale.set(s * (it.flip < 0 ? -1 : 1), s, s); g.position.set(it.x, 0, it.y);
+    /* T029: only things that move turn to face you (cars, the Drives behavior); everything else keeps its facing (faceStep: Build mode's Turn button, or toward the nearest road) */
+    const moving = it.act === 'vehicle', yaw = moving ? 0 : faceStep(it) * Math.PI / 4;
+    const g = await pieceMesh(toy, null, { instant: 1, thick: !moving }); g.scale.set(s * (it.flip < 0 ? -1 : 1), s, s); g.position.set(it.x, 0, it.y); g.rotation.y = yaw;
     const blob = new THREE.Mesh(new THREE.PlaneGeometry(toy.w * s * .9, Math.min(60, toy.w * s * .3)), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.set(it.x, .7, it.y);
-    sc.add(g, blob); const rec = { it, g, blob, toy };
+    sc.add(g, blob); const rec = { it, g, blob, toy, moving, yaw };
     if (it.act === 'light') { const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); gl.scale.set(150 * s, 150 * s, 1); gl.position.set(it.x, toy.h * s * .85, it.y + 4); sc.add(gl); rec.light = gl; }
     if (it.act === 'door') rec.door = 1;
     items.push(rec);
-    if (it.act !== 'vehicle' && toy.w * s > 26 && toy.h * s > 26) col.push({ x0: it.x - toy.w * s * .42, x1: it.x + toy.w * s * .42, z0: it.y - 12, z1: it.y + 10, it });
+    if (it.act === 'door') { if (toy.w * s > 26) col.push({ x0: it.x - toy.w * s * .42, x1: it.x + toy.w * s * .42, z0: it.y - 12, z1: it.y + 10, it }); } /* doors open and close, so they keep the simple box check */
+    else if (!moving && (it.tb || 'block') !== 'pass' && toy.w * s > 26 && toy.h * s > 26) solids.push({ x: it.x, z: it.y - 2, w: toy.w * s * .84, d: 20, h: toy.h * s, yaw });
   }
-  return { sc, col, items, blds, kind: 'town', bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
+  return { sc, col, items, blds, kind: 'town', bvh: solidBVH(solids), bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
 }
 /* the studio or the house: the room's 2D background becomes the floor and back wall; stations stand up as cutouts */
 async function buildRoom(R) {
-  const sc = baseScene(), col = [], WALLZ = 222, WH = 250;
+  const sc = baseScene(), col = [], solids = [], WALLZ = 222, WH = 250;
   /* paint the room's own background once, on the paused main canvas, then copy it */
   const k = Math.min(cv.width / R.W, cv.height / (R.H + 40), 1.4), bgc = cvs(R.W * k, R.H * k);
   g.save(); g.setTransform(k, 0, 0, k, 0, 0); g.clearRect(0, 0, R.W, R.H); try { const RM0 = RM; RM = R; R.bg(); RM = RM0; } catch (e) { } g.restore(); bgc.getContext('2d').drawImage(cv, 0, 0, R.W * k, R.H * k, 0, 0, bgc.width, bgc.height);
   const crop = (y0, y1) => { const c = cvs(R.W * k, (y1 - y0) * k); c.getContext('2d').drawImage(bgc, 0, y0 * k, R.W * k, (y1 - y0) * k, 0, 0, c.width, c.height); return c; };
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(R.W, R.H - WALLZ), lam({ map: texOf(crop(WALLZ, R.H)) })); floor.rotation.x = -Math.PI / 2; floor.position.set(R.W / 2, 0, (R.H + WALLZ) / 2); sc.add(floor);
   const wtop = Math.max(0, WALLZ - 230), wall = new THREE.Mesh(new THREE.PlaneGeometry(R.W, WH), lam({ map: texOf(crop(wtop, WALLZ)) })); wall.position.set(R.W / 2, WH / 2, WALLZ); sc.add(wall);
-  const side = lam({ color: 0xc9a46a }); [[-6, 12], [R.W + 6, 12]].forEach(([x0]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(12, WH, R.H - WALLZ + 12), side); m.position.set(x0, WH / 2, (R.H + WALLZ) / 2); sc.add(m); });
+  const side = lam({ color: 0xc9a46a }); [[-6, 12], [R.W + 6, 12]].forEach(([x0]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(12, WH, R.H - WALLZ + 12), side); m.position.set(x0, WH / 2, (R.H + WALLZ) / 2); sc.add(m); solids.push({ x: x0, z: (R.H + WALLZ) / 2, w: 12, d: R.H - WALLZ + 12, h: WH }); });
   const front = new THREE.Mesh(new THREE.BoxGeometry(R.W + 24, 40, 12), side); front.position.set(R.W / 2, 20, R.H + 6); sc.add(front);
+  solids.push({ x: R.W / 2, z: WALLZ - 6, w: R.W + 24, d: 12, h: WH }, { x: R.W / 2, z: R.H + 6, w: R.W + 24, d: 12, h: WH });
   const wood = woodPlane(4000); wood.position.set(R.W / 2, -3, R.H / 2); sc.add(wood);
   const stns = [];
   for (const s of R.stn) {
@@ -150,13 +192,22 @@ async function buildRoom(R) {
     const d = x.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0; for (let j = 0; j < c.height; j += 2) for (let i = 0; i < c.width; i += 2) if (d[(j * c.width + i) * 4 + 3] > 20) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
     if (x1 <= x0) continue; const tc = cvs(x1 - x0 + 2, y1 - y0 + 2); tc.getContext('2d').drawImage(c, -x0, -y0);
     const w = tc.width / S, h = tc.height / S, base = (262 * S - y0) / S, ox = (x0 / S - 150) + w / 2;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h).translate(ox, h / 2 - (h - base), 0), lam({ map: texOf(tc), alphaTest: .45, side: THREE.DoubleSide }));
-    const z = s.wall ? WALLZ + 3 : s.y; m.position.set(s.x, 0, z); sc.add(m);
-    const tag = labelSprite(s.name, s.soon ? 'coming soon' : (s.sub || '')); tag.position.set(s.x, Math.max(base, 60) + 40, z + 4); sc.add(tag);
+    /* T029: every station is a cardboard cutout with a real edge (wall ones are thinner), so none vanish side-on */
+    const th = s.wall ? 4 : THICK, z = s.wall ? WALLZ + th / 2 + 1 : s.y;
+    const m = thickCut(tc, lam({ map: texOf(tc), alphaTest: .45, side: THREE.DoubleSide }), w, h, th, 0xc49a62, ox, base - h); m.position.set(s.x, 0, z); sc.add(m);
+    /* the name sign stands on the top edge of the station's front, sized to it, kept inside the room and under the ceiling line */
+    /* size and place it by the solid part of the drawing (faint glows and shadows don't count) */
+    const sd = tc.getContext('2d').getImageData(0, 0, tc.width, tc.height).data, rows = new Uint16Array(tc.height); let oy0 = tc.height, ox0 = tc.width, ox1 = 0; for (let j = 0; j < tc.height; j += 2) for (let i = 0; i < tc.width; i += 2) if (sd[(j * tc.width + i) * 4 + 3] > 115) { rows[j]++; if (i < ox0) ox0 = i; if (i > ox1) ox1 = i; }
+    /* its top is the first row that is at least a third as wide as the drawing, so thin bits (a flagpole, a lamp cord) don't lift the sign */
+    for (let j = 0; j < tc.height; j += 2) if (rows[j] * 2 >= (ox1 - ox0) / 3) { oy0 = j; break; }
+    const top = oy0 < tc.height ? base - oy0 / S : base, ow = ox1 > ox0 ? (ox1 - ox0) / S : w, ocx = ox1 > ox0 ? s.x + ox - w / 2 + (ox0 + ox1) / 2 / S : s.x + ox;
+    const tag = signBox(s.name, s.soon ? 'coming soon' : (s.sub || ''), Math.max(56, Math.min(112, ow * .75))), sw = tag.userData.sign.w, sh = tag.userData.sign.h;
+    const tx = Math.max(sw / 2 + 4, Math.min(R.W - sw / 2 - 4, ocx)), ty = Math.min(WH - sh / 2 - 4, top + 2 + sh / 2);
+    tag.position.set(tx, ty, z + th / 2 + 2); sc.add(tag); /* in front of its own drawing, so it is never inside a wall */
     const sp = standPt(s); stns.push({ s, at: { x: sp.x, z: sp.y } });
-    if (!s.wall && w > 30) col.push({ x0: s.x - w * .4, x1: s.x + w * .4, z0: z - 14, z1: z + 8 });
+    if (!s.wall && w > 30) solids.push({ x: s.x + ox, z: z - 6, w: w * .84, d: th + 24, h });
   }
-  return { sc, col, items: [], blds: [], stns, kind: R === HOUSE ? 'house' : 'home', R, bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
+  return { sc, col, items: [], blds: [], stns, kind: R === HOUSE ? 'house' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
 }
 
 /* ---------- the view: overlay, controls, loop ---------- */
@@ -228,7 +279,22 @@ function act() {
     if (s.soon) { toast(s.name + ' is coming in a later pass'); return; }
     close(R.S.kind); setTimeout(() => enterStn(s), 60); }
 }
+/* T029: everything solid (walls, buildings, stations, pieces that block) as one collision mesh with a BVH, so the camera stops CR short of it */
+function solidBVH(list) {
+  const P = [], mt = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  for (const b of list) { if (!b || !(b.w > 0) || !(b.d > 0)) continue; const g = new THREE.BoxGeometry(b.w, b.h || 120, b.d).toNonIndexed(); mt.compose(new THREE.Vector3(b.x, (b.h || 120) / 2, b.z), q.setFromAxisAngle(up, b.yaw || 0), new THREE.Vector3(1, 1, 1)); g.applyMatrix4(mt); P.push(...g.attributes.position.array); g.dispose(); }
+  if (!P.length) return null; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); return new MeshBVH(geo);
+}
+const _cp = new THREE.Vector3(), _hit = {};
+function collideBVH(p) {
+  const bvh = R.S.bvh; if (!bvh) return;
+  for (let pass = 0; pass < 3; pass++) { let moved = false;
+    for (const y of [22, EYE]) { _cp.set(p.x, y, p.z); const h = bvh.closestPointToPoint(_cp, _hit, 0, CR); if (!h || h.distance >= CR) continue;
+      let dx = p.x - h.point.x, dz = p.z - h.point.z, l = Math.hypot(dx, dz); if (l < .01) continue; const k = (CR - l) / l + .001; p.x += dx * k; p.z += dz * k; moved = true; }
+    if (!moved) break; }
+}
 function collide(p) {
+  collideBVH(p);
   const b = R.S.bounds; p.x = Math.max(b.x0, Math.min(b.x1, p.x)); p.z = Math.max(b.z0, Math.min(b.z1, p.z));
   for (const c of R.S.col) { if (c.it && c.it.act === 'door' && c.it.open) continue; if (p.x > c.x0 - RAD && p.x < c.x1 + RAD && p.z > c.z0 - RAD && p.z < c.z1 + RAD) { const dl = p.x - (c.x0 - RAD), dr = c.x1 + RAD - p.x, du = p.z - (c.z0 - RAD), dd = c.z1 + RAD - p.z, m = Math.min(dl, dr, du, dd); if (m === dl) p.x = c.x0 - RAD; else if (m === dr) p.x = c.x1 + RAD; else if (m === du) p.z = c.z0 - RAD; else p.z = c.z1 + RAD; } }
   if (R.S.kind === 'town') for (const r of R.S.items) if (r.it.act === 'vehicle') { const dx = p.x - r.it.x, dz = p.z - r.it.y, d = Math.hypot(dx, dz), m = 36; if (d < m && d > .01) { p.x = r.it.x + dx / d * m; p.z = r.it.y + dz / d * m; } }
@@ -244,8 +310,9 @@ function loop(ts) {
   const { c, k } = skyCols(); R.renderer.setClearColor(c); S.sc.fog.color.copy(c); S.sc.userData.L.hemi.intensity = 1.5 - k * 1.0; S.sc.userData.L.sun.intensity = 1.6 * (1 - k) + .1; S.sc.userData.L.hemi.color.setHex(k > .5 ? 0x8fa0ff : 0xffffff);
   for (const r of S.items) {
     r.g.position.set(r.it.x, 0, r.it.y); r.blob.position.set(r.it.x, .7, r.it.y); const s = r.it.s || 1; r.g.scale.x = s * (r.it.flip < 0 ? -1 : 1);
-    if (r.door) r.g.rotation.y = r.it.open ? -1.25 : 0;
-    else if (r.g.userData.style === 'flat') r.g.rotation.y = Math.atan2(p.x - r.it.x, p.z - r.it.y); /* flat cutouts turn to face you, like sprites in old 3D games */
+    if (r.door) r.g.rotation.y = r.yaw + (r.it.open ? -1.25 : 0);
+    else if (r.moving && r.g.userData.style === 'flat') r.g.rotation.y = Math.atan2(p.x - r.it.x, p.z - r.it.y); /* T029: only moving things turn to face you */
+    else r.g.rotation.y = r.yaw;
     if (r.light) { r.light.material.opacity = Math.min(1, k * 1.3) * (.85 + .15 * Math.sin(R.t * 3 + r.it.x)); }
     if (r.g.userData.glow) r.g.userData.mats.forEach(m => { m.emissiveIntensity = k * 1.1; });
   }
