@@ -45,7 +45,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 #ovlOut{flex:none;width:34px;height:34px;border-radius:17px;background:var(--paper);display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink);font-size:16px;box-shadow:0 2px 0 #0004}
 #ovlBox{flex:1;min-height:0;position:relative;background:#2b2140}
 #ovlBox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
-#lobQuick{background:var(--paper);align-self:flex-end}
+#lobQuick{background:var(--paper)}#lobRow{display:flex;gap:8px;align-self:stretch;justify-content:space-between;pointer-events:none}#lobMove{background:var(--paper)}#lobMove.on{background:var(--yellow)}
 #classUI{position:fixed;left:0;right:0;top:46px;bottom:0;overflow:auto;padding:8px 12px 40px;z-index:3}
 #classIn{max-width:560px;margin:0 auto}
 .cnote{color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 0 #0006;margin:4px 2px 10px;line-height:1.35}
@@ -197,7 +197,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
   <button class="tb" id="bBox" aria-label="Toy box">🧸<b id="nBox">0</b></button>
   <button class="tb" id="bSet" aria-label="Settings">⚙️</button>
 </div>
-<div id="lobbyUI" class="scr"><button id="lobGo"></button><button id="lobQuick">☰ Quick jump</button></div>
+<div id="lobbyUI" class="scr"><button id="lobGo"></button><div id="lobRow"><button id="lobMove">✋ Move things</button><button id="lobQuick">☰ Quick jump</button></div></div>
 <div id="ovl"><div id="ovlBar"><button id="ovlBack">◀ Back to the studio</button><div id="ovlTtl"></div><a id="ovlOut" target="_blank" rel="noopener" aria-label="Open on its own page" title="Open on its own page">↗</a></div><div id="ovlBox"></div></div>
 <div id="classUI" class="scr"><div id="classIn"></div></div>
 <div id="lesson"><div id="lesT"></div><div id="lesS"></div><div id="lesB"><button id="lesP">◀</button><span id="lesN"></span><button id="lesX">▶</button><button id="lesH">Hide</button><button id="lesQ">✕</button></div></div>
@@ -825,12 +825,18 @@ function lobCam(snap){const vw=W/RM.z,vh=H/RM.z,h=RM.hero,tx=vw>=RM.W?(RM.W-vw)/
 const lw=(sx,sy)=>({x:RM.cam.x+sx/RM.z,y:RM.cam.y+sy/RM.z});
 function stnAt(w){for(const s of RM.stn){if(s.wall?(Math.abs(w.x-s.x)<70&&w.y<s.y+10&&w.y>s.y-190):(Math.abs(w.x-s.x)<80&&w.y<s.y+12&&w.y>s.y-(s.h||130)))return s}return null}
 function enterStn(s){if(s.act){SFX.tick();s.act()}else if(s.soon){toast(s.name+' is coming in a later pass');SFX.tick()}else{SFX.tick();go(s.go)}}
-function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
-function lMove(e){if(RM.pend)return;const w=lw(e.clientX,e.clientY);RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)}}
+/* v1.5.1: Move things mode. Drag any station in the studio or the house. Wall things slide along the wall, floor things go anywhere on the floor. Saved per room (craftloft_stnpos_lobby / _househero). */
+let MOVE=null;
+function stnSave(){const o={};for(const t of RM.stn)o[t.id]={x:Math.round(t.x),y:Math.round(t.y)};LS.set('stnpos_'+RM.key,o)}
+function stnLoad(R){const o=LS.get('stnpos_'+R.key,null);if(!o)return;for(const t of R.stn){const p=o[t.id];if(p){t.x=p.x;if(!t.wall)t.y=p.y}}}
+function setMove(on){MOVE=on?{d:null}:null;$('#lobMove').classList.toggle('on',!!on);$('#lobMove').textContent=on?'✓ Done moving':'✋ Move things';RM.tgt=null;RM.pend=null;if(on){RM.near=null;$('#lobGo').style.display='none';toast('Drag anything to move it. Tap Done when finished.')}else stnSave()}
+function lUp(){if(MOVE&&MOVE.d){MOVE.d=null;stnSave();SFX.tick()}}
+function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(MOVE){if(s){MOVE.d={s,ox:w.x-s.x,oy:w.y-s.y};SFX.tick()}return}if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
+function lMove(e){if(MOVE){if(MOVE.d){const w=lw(e.clientX,e.clientY),t=MOVE.d.s;t.x=clamp(w.x-MOVE.d.ox,60,RM.W-60);if(!t.wall)t.y=clamp(w.y-MOVE.d.oy,300,RM.H-40)}return}if(RM.pend)return;const w=lw(e.clientX,e.clientY);RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)}}
 function updLobby(){const R=RM,h=R.hero;if(R.tgt){const dx=R.tgt.x-h.x,dy=R.tgt.y-h.y,d=Math.hypot(dx,dy);if(d>5){const v=Math.min(d,210*DT);h.x+=dx/d*v;h.y+=dy/d*v;if(Math.abs(dx)>2)R.face=dx>0?1:-1;const p0=R.ph;R.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(R.ph/Math.PI))SFX.step()}else{R.tgt=null;if(R.key)LS.set(R.key,h);if(R.pend){const s=R.pend;R.pend=null;enterStn(s);return}}}
   petFollow(h.x,h.y,0,40);
   let near=null,bd=95;for(const s of R.stn){const d=dist(standPt(s),h);if(d<bd){bd=d;near=s}}
-  if(near!==R.near){R.near=near;const b=$('#lobGo');if(near&&!near.soon){b.textContent=near.verb+' ▶';b.style.display='block'}else b.style.display='none'}
+  if(near!==R.near){R.near=near;const b=$('#lobGo');if(!MOVE&&near&&!near.soon){b.textContent=near.verb+' ▶';b.style.display='block'}else b.style.display='none'}
   lobCam(false)}
 function drawTag(c,s){const t=s.name,soon=s.soon;c.font='800 13px ui-rounded,system-ui,sans-serif';const w=c.measureText(t).width+16,y=s.tagY?s.tagY:s.wall?-204:(s.id==='desk'?-106:s.id==='chest'?-136:-150);c.save();c.translate(0,y);c.rotate(-.03);c.fillStyle=soon?'#e9dfc6':'#fbf6ea';c.shadowColor='rgba(0,0,0,.3)';c.shadowBlur=4;c.shadowOffsetY=2;rr(c,-w/2,-11,w,22,5);c.fill();c.shadowColor='transparent';c.fillStyle='#3b2f2a';c.textAlign='center';c.textBaseline='middle';c.fillText(t,0,1);
   if(soon){c.font='800 10px system-ui';c.fillStyle='#8b5a3c';c.fillText('coming soon',0,17)}else if(s.sub){c.font='700 10.5px system-ui';c.fillStyle='#fff';c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=3;c.fillText(s.sub,0,18)}c.restore();c.textBaseline='alphabetic'}
@@ -860,12 +866,12 @@ function drawHouseRoom(){const R=HOUSE,Wd=R.W;g.fillStyle='#4a3324';g.fillRect(-
   g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(140,420,34,11,0,0,TAU);g.fill();g.fillStyle='#f08a2e';g.beginPath();g.ellipse(140,413,32,13,0,0,TAU);g.fill();g.fillStyle='#d9761f';g.beginPath();g.arc(140,412,3,0,TAU);g.fill();
   /* DECORATION SPOT: a masking-tape outline on the floor. Things made in the game (clay pots, plants, dioramas) can stand here later. */
   g.save();g.translate(440,520);g.strokeStyle='rgba(250,240,190,.85)';g.lineWidth=5;g.setLineDash([18,9]);g.strokeRect(-56,-34,112,62);g.setLineDash([]);g.rotate(-.04);g.fillStyle='rgba(250,240,190,.92)';g.fillRect(-46,-9,92,18);g.fillStyle='#8b5a3c';g.font='800 10.5px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('decoration spot',0,1);g.textBaseline='alphabetic';g.restore()}
-LOB.bg=drawLobbyRoom;HOUSE.bg=drawHouseRoom;
+LOB.bg=drawLobbyRoom;HOUSE.bg=drawHouseRoom;stnLoad(LOB);stnLoad(HOUSE);
 function leaveHouse(k){k=k||'house';go('town');const p=TOWN[k],dr=BLD[k].door;TOWN.hero.x=p.x+dr.x;TOWN.hero.y=p.y+dr.y;ST.walk=true;LS.set('where',{s:'town',walk:1});ST.th.face=1;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;LS.set('town',TOWN);buildStageUI()}
 function drawLobby(){const z=RM.z,cam=RM.cam;g.fillStyle='#3e2a1e';g.fillRect(0,0,W,H);g.save();g.scale(z,z);g.translate(-cam.x,-cam.y);RM.bg();
   const h=RM.hero,list=RM.stn.map(s=>({y:s.wall?-1:s.y,s})).concat([{y:h.y,hero:1},{y:PET.y-.1,pet:1}]).sort((a,b)=>a.y-b.y);
   for(const o of list){if(o.pet){if(PET.kind!=='none'&&PET.ok){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(PET.x,PET.y,15,5,0,0,TAU);g.fill();g.save();g.translate(PET.x,PET.y);g.scale(1.3,1.3);drawPet(g,0,0);g.restore()}}else if(o.hero){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(h.x,h.y,17,6,0,0,TAU);g.fill();g.save();g.translate(h.x,h.y);g.scale(1.35,1.35);drawHero(g,0,0,RM.face,RM.ph,false);g.restore()}
-    else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(RM.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
+    else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(MOVE){g.strokeStyle=MOVE.d&&MOVE.d.s===s?'rgba(245,209,66,1)':'rgba(255,255,255,.75)';g.lineWidth=3;g.setLineDash([7,6]);g.lineDashOffset=-NOW/60;g.beginPath();g.ellipse(0,s.wall?30:6,46,14,0,0,TAU);g.stroke();g.setLineDash([])}if(RM.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
   if(RM.tgt&&!RM.pend){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(RM.tgt.x,RM.tgt.y,9+Math.sin(NOW/120)*2,0,TAU);g.stroke()}
   g.restore()}
 /* ================= ART CLASS: a learning tree, small steps first ================= */
@@ -1002,13 +1008,13 @@ function updBadge(){$('#nBox').textContent=LIB?LIB.length:TOYS.length}
 /* ---- screens ---- */
 let craftSeen=false;
 function showScr(){const m={lobbyUI:SCR==='home'||SCR==='house',classUI:SCR==='class',craftUI:SCR==='craft',stageUI:(SCR==='level'||SCR==='town')&&!ST.play,playUI:SCR==='level'&&ST.play,boxUI:SCR==='box',kitUI:SCR==='kit',lvlBar:SCR==='level'&&!ST.play};for(const k in m)$('#'+k).classList.toggle('on',m[k]);$('#top').style.display=SCR==='title'?'none':'flex';$('#bUndo').style.display=SCR==='craft'||SCR==='kit'?'':'none';$('#bHome').style.visibility=SCR==='home'?'hidden':'';$('#bBox').style.display=SCR==='box'||(SCR==='level'&&ST.play)?'none':'';$('#ttl').textContent={home:'Shoebox Studio',craft:'School Desk',level:'Make a Level',town:'Little Town',house:'My House',box:'Toy Box',class:'Art Class',kit:'Pixel UI Kit',title:''}[SCR];showLesson()}
-function go(s){FROM=SCR;if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;ST.pendH=0;SCR=s;closeDlg();showScr();updBadge();if(s!=='title')LS.set('where',{s:s==='house'||s==='town'?s:'home',walk:s==='town'?ST.walk:0});
+function go(s){FROM=SCR;if(MOVE)setMove(false);if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;ST.pendH=0;SCR=s;closeDlg();showScr();updBadge();if(s!=='title')LS.set('where',{s:s==='house'||s==='town'?s:'home',walk:s==='town'?ST.walk:0});
   if(s==='craft'){renderTabs();fitDesk(!craftSeen);if(!craftSeen&&!C.pieces.length&&!(LS.get('desk',{}).pieces||[]).length&&!LES)setTimeout(()=>{if(SCR==='craft'&&!C.pieces.length)placePaper(PAPERS[0])},350);craftSeen=true}
   else if(s==='level'||s==='town')enterStage(s);else if(s==='box')renderBox();else if(s==='kit')renderKit();else if(s==='class')renderClass();else if(s==='home'||s==='house'){RM=s==='house'?HOUSE:LOB;if(!RESUMING){if(s==='house')HOUSE.hero={x:460,y:262};else if(FROM==='town'){const d=STATIONS.find(t=>t.id==='door');LOB.hero=standPt(d)}}PET.ok=false;RM.tgt=null;RM.pend=null;RM.near=undefined;lobZoom();lobCam(true)}}
 function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['house','🛋️','My House','A cozy room in Little Town, with a game console'],['shelf','📚','Bookshelf','Story Shelf: plan stories, worlds and characters'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat']];
   dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else if(b.dataset.q==='shelf')openTool('shelf');else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
 $('#ovlBack').onclick=()=>closeTool();
-$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
+$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lobMove').onclick=()=>{auInit();SFX.tick();setMove(!MOVE)};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
 $('#bHome').onclick=()=>{auInit();SFX.tick();go('home')};$('#bBox').onclick=()=>{auInit();SFX.tick();go('box')};$('#bUndo').onclick=()=>{auInit();if(SCR==='kit')kitUndo();else undo()};
 /* ---- stage UI ---- */
 function buildStageUI(){const tray=$('#tray');tray.innerHTML='';tray.style.display=ST.walk?'none':'';$('#layW').classList.toggle('on',ST.layer!=='hud');$('#layH').classList.toggle('on',ST.layer==='hud');if(ST.kind==='level'&&ST.layer==='hud'){buildHudUI();return}if(!TOYS.length)tray.innerHTML='<div id="trayEmpty">Your toy box is empty. Make something in Craft first!</div>';
@@ -1278,7 +1284,7 @@ function saveLevelAsset(){const n=LIB.filter(a=>a.type==='level').length+1;dlg('
   d.querySelector('#dYes').onclick=()=>{const a={id:newAid(),type:'level',name:(d.querySelector('#an').value||'My level '+n).trim().slice(0,24)||'My level',tags:parseTags(d.querySelector('#atg').value),date:Date.now(),data:lvlClean(JSON.parse(JSON.stringify(LVL)))};try{a.thumb=lvlThumbURL(LVL)}catch(e){}LIB.push(a);if(!saveLib()){LIB.pop();toast('Storage is full. Remove something first.');return}closeDlg();SFX.thud();updBadge();toast(a.name+' is in the Toy Box')}})}
 /* ---- touch / pen / mouse on the canvas ---- */
 const PT=new Map();let pinch=null,plock=false;
-const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:NOP,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>resume(),p:NOP}:null;
+const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>resume(),p:NOP}:null;
 cv.addEventListener('pointerdown',e=>{auInit();const h=handler();if(!h)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(PT.size===1&&!plock)h.d(e);else if(PT.size===2){h.u(e,true);plock=true;const[a,b]=[...PT.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,d:1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2}}});
 cv.addEventListener('pointermove',e=>{const h=handler();if(!h||!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1294,7 +1300,7 @@ function drawBack(dim){g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(0,0
 function drawHome(){drawBack(.12);const rows=['SHOEBOX','STUDIO'],ts=Math.min(54,W/8.6,H*.34/2.9),top=Math.max(54,H*.38/2-ts*1.25);g.textAlign='center';g.textBaseline='middle';
   rows.forEach((row,ri)=>{const n=row.length,x0=W/2-(n-1)*ts*1.08/2;for(let i=0;i<n;i++){const k=ri*7+i,a=Math.sin(k*2.3)*.13+Math.sin(NOW/900+k)*.015;g.save();g.translate(x0+i*ts*1.08,top+ri*ts*1.22+ts/2+Math.sin(k*1.7)*3);g.rotate(a);g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=6*DPR;g.shadowOffsetY=3*DPR;g.fillStyle='#fbf6ea';g.fillRect(-ts/2,-ts/2,ts,ts);g.shadowColor='transparent';g.fillStyle=PAPERS[(k*3+ri)%9];g.fillRect(-ts/2+3,-ts/2+3,ts-6,ts-6);g.fillStyle=((k*3+ri)%9===2)?'#3b2f2a':'#fff';g.font='900 '+(ts*.72)+'px ui-rounded,system-ui,sans-serif';g.fillText(row[i],0,ts*.04);g.restore()}});
   g.save();g.translate(W/2,top+ts*2.62);g.rotate(-.025);g.fillStyle='rgba(250,240,190,.92)';const tw=Math.min(W-40,250);g.fillRect(-tw/2,-13,tw,26);g.fillStyle='#3b2f2a';g.font='800 13.5px ui-rounded,system-ui,sans-serif';g.fillText('Cut  ·  Paste  ·  Play',0,1);g.restore();
-  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.5 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
+  g.fillStyle='#fff';g.font='900 20px ui-rounded,system-ui,sans-serif';g.globalAlpha=.65+.35*Math.sin(NOW/400);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText('Tap to start',W/2,H*.68);g.globalAlpha=1;g.font='700 12px system-ui';g.fillText('v1.5.1 · made by MajorasPride',W/2,H-26);g.shadowColor='transparent'}
 /* ---- main loop ---- */
 function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;if(OVL){requestAnimationFrame(frame);return}g.setTransform(DPR,0,0,DPR,0,0);
   if(SCR==='title')drawHome();else if(SCR==='home'||SCR==='house'){updLobby();if(SCR==='home'||SCR==='house')drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}

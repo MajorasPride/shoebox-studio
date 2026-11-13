@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.5, live)_
+_Last updated: Nov 13, 2026 (v1.5.1, live)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -35,6 +35,10 @@ _Last updated: Nov 13, 2026 (v1.5, live)_
 6. Rollback copy of v1.4 is in `/v1.4/`.
 - Code: search "v1.5:" comments, `BLD`, `bldAt`, `drawTownStudio`, `resume()`.
 - Tests run: Playwright at 412x860 and 1280x800: studio door to town, walk into house and studio, move studio, reload resumes house / studio / town (walk mode kept), brand-new save starts in studio, all screens and Story Shelf open, no page errors.
+
+## What v1.5.1 added (Nov 13, 2026, live)
+- **Move things** button in the studio and the house (bottom left). Tap it, drag any station or piece of furniture, tap Done. Wall things (Art Class board, doors, Cork Board, Display Shelf) slide along the wall; floor things go anywhere on the floor. Saved per room: `craftloft_stnpos_lobby`, `craftloft_stnpos_househero`. Code: search "v1.5.1".
+- Not yet: a "reset room" button, and the background art (rugs, windows) stays put.
 
 ## Art direction (owner, Nov 12, 2026: standing rule)
 - Shoebox Studio is **one mixed-media piece**: clay, yarn, paper, cardboard, glow-in-the-dark and glitter sit together with real-art, diorama and book-nook realism, a little cartoon. Original art only (pictures he shared of yarn/paper/clay games and book nooks are for feel, never copied).
