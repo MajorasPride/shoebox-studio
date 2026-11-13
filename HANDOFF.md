@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020) and picture examples (T021) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -37,6 +37,16 @@ Code: search "T020" and "VHS SPOT". The owner's idea (Q023, Q030 "Yes"): a saved
 4. **Player** (`vhsPlay`, `vhsFrame`, overlay `#vhs`, `OVL='vhs'`): a cloth hanging from a rod with soft folds and a slight sway, a warm light cone from the little tape player, faint tracking lines (more on pause and rewind), a small wobble, VCR words (PLAY, PAUSE, REW, STOP) and a tape counter 00:00 in the corner. Buttons: Rewind (6x back to the start), Play/Pause, Eject (tape out, back to the shelf), Back to the studio. Phone Back closes it. A flat 2D canvas effect; the projector's pull-down screen and flipbook player are not changed.
 5. **NES-style pages** (`kitPageStart`, `kitPageUI`, `kitPageSave`): 👾 Draw a pixel page on the flipbook maker opens the Pixel UI Kit editor in "page mode": the same 16 x 16 grid and tools with a small NES palette (`NES_PAL`), the kit's other sections hidden. Save page makes a "Pixel page N" piece (128 x 128, tagged "pixel page") and adds it as the next page; the next page starts as a copy of the last one. The kit's own draft is kept aside (`KIT.pgSave`) and comes back after, and `kitDraft` does not save while in page mode.
 - Tests run (Playwright, Galaxy S23 Ultra size 384x824 touch, and 1280x800): a v1.5.2 save loads; the VHS Shelf shows next to the projector and opens; a 3-page flipbook (2 pieces + 1 pixel page drawn on the kit grid) saved to a tape with a label; the shelf shows its spine; it plays on the cloth with tracking lines and counter; pause, rewind and eject work; phone Back closes it; the projector still plays the flipbook as before; reload keeps the tape; the label changed to a piece; export then import into a fresh save brings the tape back; Retro 3D opens with the station; the kit draft is untouched; no page errors.
+- Not checked: the owner's real phone.
+
+## Picture examples (built Nov 13, 2026 by Opus, ticket T021; on `dev` only, not live)
+Code: search "T021" and "PICTURE EXAMPLES" (one block at the end of the main script, plus small hooks). The owner's answers Q039, Q036 and Q040: every example and how-to shows pictures, not only text.
+1. **Lesson pictures.** Every Art Class lesson button has a small finished picture, and the lesson panel on the School Desk shows the finished picture ("Finished") at the top. Drawing lessons also show "This step": the drawing built up to that step. Tap either picture to see it big.
+2. **New lesson: Draw a house** (Drawing branch, `d5`, 9 steps): square walls, triangle roof, door, two windows, chimney and path, colour it in with any Art box medium, save it to the Toy Box, put it in Little Town. A picture for every step.
+3. **Example wall.** The Fridge Gallery station is no longer "coming soon": the fridge in the studio holds 6 finished examples with magnets (paper house, clay dog, yarn tree, crayon sun, watercolour flower, glitter-pen star). Tap the fridge (`fridgeOpen`), tap an example (`fridgeCard`): its picture, what it is made of and how. **Open at the School Desk** puts a copy on the desk (like Copy to desk). **Keep** adds it to the Toy Box once (tag "example"). The examples are code-made toys with ids `ex_*` (`exToy`); they are not in the Toy Box unless he taps Keep. The fridge shows in Retro 3D like every station.
+4. **Toy Box picture cards.** The starter (`starter_*`) and showcase (`show_*`) pieces already showed their own picture on their cards; checked, nothing needed changing. Showcase pieces stay in every save (Q036).
+- **How the EXAMPLES list works (for the next builder):** `EXAMPLES` is one list of `{id, lesson, step, draw(c,w,h)}`. `lesson` is a lesson id (`d1`..`d5`, `p1`..`p4`, `c1`, `c2`, `g1`, `g2`) or `'fridge'`; `step` 0 is the finished picture, 1..n the step pictures (Drawing lessons only); for the fridge, `step` is its place on the fridge (`EXFRIDGE` holds the names, what it is made of, how, and the medium tags). Lesson pictures are drawn in a 240 x 180 box (`EXW`, `EXH`). Every picture is drawn through `exDraw(e,c,w,h)`, so a later order can swap any picture for the owner's own art in one place. `exCanvas` caches drawn pictures; `exInto` puts one into a canvas.
+- Tests run (Playwright, Galaxy S23 Ultra size 384x824 touch, and 1280x800): all 13 lesson buttons show a picture; all 86 lesson steps show the finished picture, and every Drawing step shows its own step picture; the big picture opens; the fridge opens with 6 examples; Keep adds the clay dog once (tapping Keep again does not add a second); Open at the School Desk puts the crayon sun on the desk; the 17 starter and showcase cards show pictures; reload keeps the kept example; Retro 3D studio opens; a v1.5.2 save with a finished lesson loads with its star; no page errors.
 - Not checked: the owner's real phone.
 
 ## What v1.6c added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
@@ -154,11 +164,11 @@ All of this is in `index.html`. Search for the comment titles below.
 
 ## Next steps
 - Owner plays v1.6 on the phone (live site) and says what to change. Most worth a look: Retro 3D on the real phone (speed, joystick feel), the art mediums at the School Desk, the Handy Notebook while walking.
-- VHS spot (T020): built on `dev`, waiting for the owner's look on the private preview before it goes live.
+- VHS spot (T020) and picture examples (T021): built on `dev`, waiting for the owner's look on the private preview before they go live.
 - 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows), real 3D water and physics (from the plan doc).
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
 - Book nooks on the bookshelf.
 - More Story Shelf tutorials and worked examples.
-- The other "coming soon" stations: Fridge Gallery, Supply Shop, Dress-up Mirror, Art Studio, Cork Board.
+- The other "coming soon" stations: Supply Shop, Dress-up Mirror, Art Studio, Cork Board.
 - Recommendation: let buildings in Little Town hold levels (the "buildings are level doors" idea). The house code is a ready pattern for it.
