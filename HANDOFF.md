@@ -22,6 +22,8 @@ _Last updated: Nov 13, 2026 (v1.4, the first big update)_
 - Live site: https://majoraspride.github.io/shoebox-studio/
 - Repo: https://github.com/MajorasPride/shoebox-studio
 - Original v1 artifact (Craft Loft): https://claude.ai/artifact/AnfU7AN5iGdXarANhJpL5z. This repo's `index.html` is now the main copy.
+- Plan & Results doc (Google Docs): https://docs.google.com/document/d/1qK_6I6-r1UYR5d-sLYLuauwfbBMBov7so18W7_4GTrY/edit. Command Tracker: project P004, ticket T007, result R008.
+- Drive backup of v1.4 `index.html`: https://drive.google.com/file/d/1p-Xa8B4TIeGIKZFM86gN3wfOVEDcd90x/view
 - Private preview: none for v1.4. It was skipped on the owner's say-so (see the one-time exception above). Make one for the next big update.
 
 ## What v1.4 added (built Nov 13, 2026, live)
@@ -41,6 +43,7 @@ All of this is in `index.html`. Search for the comment titles below.
 - **The house room.** `HOUSE` and `drawHouseRoom`. It's drawn like a shoebox diorama with the roof on top. Places left open on purpose: the dotted shapes on the Display Shelf, the dotted ovals next to the pet bed, and the taped decoration spot.
 - **Beat Bop Doodle's in-game copy** has no manifest and no service worker. Reason: it runs inside the game in a frame, and a service worker in a subfolder could keep serving an old copy after a big update. The stand-alone Beat Bop Doodle site keeps its own.
 - **Tests run:** Playwright at phone (412×860) and PC (1280×800) size, from a v1.3 save: walked to the bookshelf, opened and closed Story Shelf (button and phone Back), entered the house from town in build and walk mode, opened and closed Beat Bop Doodle from the console, left by the front door, dragged the house, checked every other screen still opens. No page errors.
+- **Not checked:** the live site itself after the push. The build machine could not open github.io, so the owner's phone is the first look at the live copy. If the bookshelf or console shows a blank frame there, check that `/story-shelf/` and `/beat-bop-doodle/` are being served.
 
 ## How the built-in tools work (decided Nov 12, 2026, replaces the earlier "load the live site" plan)
 - **Working copies** are where small updates happen with Claude:
