@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.4, the first big update)_
+_Last updated: Nov 13, 2026 (v1.5, live)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -25,6 +25,20 @@ _Last updated: Nov 13, 2026 (v1.4, the first big update)_
 - Plan & Results doc (Google Docs): https://docs.google.com/document/d/1qK_6I6-r1UYR5d-sLYLuauwfbBMBov7so18W7_4GTrY/edit. Command Tracker: project P004, ticket T007, result R008.
 - Drive backup of v1.4 `index.html`: https://drive.google.com/file/d/1p-Xa8B4TIeGIKZFM86gN3wfOVEDcd90x/view
 - Private preview: none for v1.4. It was skipped on the owner's say-so (see the one-time exception above). Make one for the next big update.
+
+## What v1.5 added (built Nov 13, 2026 by Opus in chat, live; ticket T008)
+1. **The studio is a building in Little Town** ("SHOEBOX STUDIO", a cardboard shoebox on its side). Walk mode: tap it, the hero walks to the door and goes in. Build mode: tap to go in, drag to move it. It blocks walking like the house.
+2. **The studio's Little Town door** now puts you outside the studio building in walk mode (was: town in build mode at the old spot). Coming in from town puts you at the studio door inside.
+3. **Both buildings move** (house and studio), positions saved in the town save (`TOWN.house`, `TOWN.studio`). Old towns get a studio at a default spot (600, 470).
+4. **Resume where you left off.** Save key `craftloft_where` = {s: home | house | town, walk}. Tapping the title screen goes there. Screens inside the studio (desk, class, kit, levels, toy box) resume to the studio. House position is saved as `craftloft_househero`, studio as `craftloft_lobby`, town in the town save. New players start in the studio.
+5. If the hero is blocked close to a building's door (within 190 px), it goes in anyway, so you can't get stuck behind your own house.
+6. Rollback copy of v1.4 is in `/v1.4/`.
+- Code: search "v1.5:" comments, `BLD`, `bldAt`, `drawTownStudio`, `resume()`.
+- Tests run: Playwright at 412x860 and 1280x800: studio door to town, walk into house and studio, move studio, reload resumes house / studio / town (walk mode kept), brand-new save starts in studio, all screens and Story Shelf open, no page errors.
+
+## Art direction (owner, Nov 12, 2026: standing rule)
+- Shoebox Studio is **one mixed-media piece**: clay, yarn, paper, cardboard, glow-in-the-dark and glitter sit together with real-art, diorama and book-nook realism, a little cartoon. Original art only (pictures he shared of yarn/paper/clay games and book nooks are for feel, never copied).
+- Long-term roadmap (also in the Plan & Results doc): v1.6 default starter town where things behave like what they are (car drives, streetlight lights up, day and night); assets in every medium; picture stickers (import photos as stickers several ways, realistic photo stickers, GIF stickers later); his own art later.
 
 ## What v1.4 added (built Nov 13, 2026, live)
 1. **Bookshelf station in the studio lobby.** Label "Bookshelf", subtitle "Story Shelf". Walk up and tap it (or use the yellow button, or Quick jump) and Story Shelf opens. The shelf has two dotted empty gaps, kept on purpose for **book nooks**.
@@ -74,7 +88,8 @@ All of this is in `index.html`. Search for the comment titles below.
 4. Done as a simple first version (v1.4, live): house in Little Town, with the console that opens Beat Bop Doodle. Its full purpose is still open (see the questions).
 
 ## Next steps
-- Owner plays v1.4 on the live site and says what to change.
+- Owner plays v1.5 on the live site and says what to change.
+- T009: v1.6 default starter town (Opus to plan).
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
 - Book nooks on the bookshelf.
