@@ -29,6 +29,27 @@ _Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture exam
 - Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
 
+## Supply Store building (built Nov 13, 2026 by Opus, ticket T032; on `dev` only, not live)
+The Supply Shop is no longer a station in the studio. It is its own store building in Little Town that you walk into. Code: search "T032" in index.html and r3d.js.
+- **Buildings are a list now.** `BLD` (index.html) has one entry per town building: `house`, `studio` and `supply`. Each has its door spot, size, the screen it opens and a `name`. A shop entry also has `scr:'shop'` and `shop:'<id>'`. Taps, walking in, dragging in Build mode, blocking the hero, the night window glow and Retro 3D all loop over `BLD`, so a new building needs no new code in those places. `goBld(k)` opens a building. `BLDDRAW(k)` returns its draw function at draw time (so Art Swap's wrapped versions are used).
+- **Its place is saved as `TOWN.supply`.** A town that has no spot for a building yet gets one from `bldSpot(T,k)`: the free spot (no pieces, no other building, not on the hero) closest to a road piece. Nothing else in the town moves. Old towns, the showcase town and Reset to showcase town all get one (`ensureBlds`). In the showcase town the store stands beside the top road, in line with the studio and the house.
+- **SHOPS and shop rooms.** `SHOPS` lists the shops. Each one has a name and a room made by `mkShopRoom(id, stations)`. The room is a normal room like the house (`RM`, Move things, saved hero spot `craftloft_shophero_<id>`, station places `craftloft_stnpos_shophero_<id>`). The screen is `'shop'` and `SHOP_ID` says which shop it is. `isRoomScr(s)` is true for `home`, `house` and `shop`. `drawShopRoom` draws any shop's room (striped wall, paper pennants, the shop's name on a banner, floor mat).
+- **Supply Store room:** Shop Door (`sdoor`, back to the store's door in town), Supply Shelves (`sshelf`, wall, coming soon) and Supply Counter. The counter reuses the old Supply Shop drawing (`STATION_DRAW.shop`, so a swap made for it carries over). It does what the station did: coming soon, as before.
+- **Quick jump** has Supply Store. Reload resumes inside the store (`craftloft_where` = `{s:'shop', shop:'supply'}`).
+- **Art Swap:** new slots `bld_supply` (Buildings in town), `room_shop_supply` (Rooms and backgrounds) and a "Supply Store stations" group (`stn_sdoor`, `stn_sshelf`, `stn_shop`). The studio list no longer has the Supply Shop.
+- **Retro 3D:** the store is a 2D shop front on a cardboard box with a flat roof and a striped awning over the door. Its sign sits on top of the front, it blocks walking (T029 walls), and the Go into button takes you inside. The store room in 3D is built like the house (stations with cardboard edges, signs on the front, walls stop you). The shop door takes you back out to the store's door.
+- **To add the next shop (T027):** one line in `BLD` (`scr:'shop', shop:'<id>'`), one `drawTown<Name>(c,p,tag)` plus a branch in `BLDDRAW`, one entry in `SHOPS` with its stations, and Art Swap slots (the room and stations are picked up by the loops; add the building to the `bld_*` list).
+- Tests run (Playwright, 384x824 touch and 1280x800), 40/40:
+  - A brand-new save puts the store beside the road in a free spot. Reset to showcase town keeps a store.
+  - A real v1.5.2 save loads with its town pieces unchanged and gets a free spot. The studio has no Supply Shop.
+  - Walk mode: tap the store and the hero walks to the door and goes in. The room has the door, shelves and counter, and the counter acts as before.
+  - The shop door puts you at the store's door in town.
+  - Build mode: dragging moves the store and saves it, and a tap goes in.
+  - Reload resumes inside the store. Quick jump goes there.
+  - Art Swap lists the store slots, and a swapped store building draws in town.
+  - Retro 3D opens in town (the store stands with its awning and sign) and inside the store. No page errors.
+- Not checked: a real phone.
+
 ## Retro 3D polish (built Nov 13, 2026 by Opus, ticket T029; on `dev` only, not live)
 Fixes from the owner's 3D testing of the T020-T022 preview. Code: `r3d.js` (3D), a small `faceStep` block next to `fixItem` and the Turn button in `updItemBar` in index.html, `lib/three-mesh-bvh.module.min.js` (new, MIT).
 1. **Facing rule.** Only things that move turn to face you in 3D: pieces with the Drives behavior (`act: 'vehicle'`, the cars). Everything else keeps a fixed facing. (The hero, pet and Player Hand are not drawn in 3D yet; when they are, they follow the moving rule.)

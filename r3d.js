@@ -117,18 +117,22 @@ function sparkles(w, h, depth) { const n = 8, pos = new Float32Array(n * 3); for
 function facade(draw, wd, ht, base) { const k = 2, c = cvs(wd * k, ht * k), x = c.getContext('2d'); x.scale(k, k); draw(x, { x: wd / 2, y: base }, false); return c; }
 function building(kind) {
   const p = TOWN[kind], b = BLD[kind], wd = b.hw * 2 + 40, ht = b.top + 30, base = b.top + 6, grp = new THREE.Group();
-  const c = facade(kind === 'house' ? drawTownHouse : drawTownStudio, wd, ht, base);
+  const c = facade(BLDDRAW(kind), wd, ht, base);
   /* scrub the painted ground shadow: the 3D blob shadow takes its place */
   const x = c.getContext('2d'); x.clearRect(0, (base + 1) * 2, c.width, c.height);
   const front = new THREE.Mesh(new THREE.PlaneGeometry(wd, ht).translate(0, ht / 2 - (ht - base), 0), lam({ map: texOf(c), alphaTest: .5, side: THREE.DoubleSide, emissive: 0xffd27a, emissiveMap: texOf(c), emissiveIntensity: 0 }));
   front.position.z = 2; grp.add(front);
-  const bw = b.hw * 1.7, bh = b.top * (kind === 'house' ? .55 : .8), dp = kind === 'house' ? 120 : 150;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, dp), lam({ color: kind === 'house' ? 0xe8cfa0 : 0xc49a62 })); body.position.set(0, bh / 2, -dp / 2); grp.add(body);
+  const shop = !!b.shop, bw = b.hw * 1.7, bh = b.top * (kind === 'house' ? .55 : shop ? .66 : .8), dp = kind === 'house' ? 120 : shop ? 130 : 150;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, dp), lam({ color: kind === 'house' ? 0xe8cfa0 : shop ? 0xe0bb80 : 0xc49a62 })); body.position.set(0, bh / 2, -dp / 2); grp.add(body);
   if (kind === 'house') { const rh = b.top * .34, sh = new THREE.Shape(); sh.moveTo(-bw / 2 - 10, 0); sh.lineTo(bw / 2 + 10, 0); sh.lineTo(0, rh); sh.closePath(); const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: dp + 8, bevelEnabled: false }), lam({ color: 0xc8463a, flatShading: true })); roof.position.set(0, bh, -dp - 4); grp.add(roof); }
+  else if (shop) { /* T032: a shop is a flat-roofed cardboard box; the striped awning sticks out over the door */
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(bw + 8, 6, dp + 8), lam({ color: 0xb08850 })); roof.position.set(0, bh + 3, -dp / 2); grp.add(roof);
+    const ac = cvs(64, 8), ax = ac.getContext('2d'); for (let i = 0; i < 8; i++) { ax.fillStyle = i % 2 ? '#fbf6ea' : '#e8443a'; ax.fillRect(i * 8, 0, 8, 8); }
+    const aw = new THREE.Mesh(new THREE.BoxGeometry(bw + 14, 3, 34), lam({ map: texOf(ac) })); aw.position.set(0, b.top * .58, 16); aw.rotation.x = .32; grp.add(aw); }
   else { const lid = new THREE.Mesh(new THREE.BoxGeometry(bw + 20, 6, 60), lam({ color: 0xd8b07a })); lid.position.set(0, bh + 4, 6); lid.rotation.x = -.25; grp.add(lid); }
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(bw * 1.4, dp * 1.5), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.set(0, .6, -dp / 2 + 10); grp.add(blob);
   /* T029: the name sign stands on top of the front, sized to the building (was a big floating label) */
-  const tag = signBox(kind === 'house' ? 'My House' : 'The Studio', 'walk to the door', Math.max(80, Math.min(150, bw * .6))); tag.position.set(0, base + 2 + tag.userData.sign.h / 2, 3); grp.add(tag);
+  const tag = signBox(kind === 'house' ? 'My House' : kind === 'studio' ? 'The Studio' : SHOPS[b.shop].name, 'walk to the door', Math.max(80, Math.min(150, bw * .6))); tag.position.set(0, base + 2 + tag.userData.sign.h / 2, 3); grp.add(tag);
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); glow.scale.set(bw * 1.3, bh * 1.3, 1); glow.position.set(0, bh * .55, 14); grp.add(glow);
   grp.position.set(p.x, 0, p.y); grp.userData = { kind, glow, front, door: { x: p.x + b.door.x, z: p.y + b.door.y }, box: { x0: p.x - bw / 2, x1: p.x + bw / 2, z0: p.y - dp, z1: p.y + 4 }, solid: { x: p.x, z: p.y - dp / 2 + 3, w: Math.max(bw, b.hw * 1.9), d: dp + 6, h: 240 } };
   return grp;
@@ -153,7 +157,7 @@ async function buildTown() {
   const wallM = lam({ color: 0xc9a46a }), lipM = lam({ color: 0xb08850 }), WH = 150;
   [[TW.W / 2, -6, TW.W + 24, 12], [TW.W / 2, TW.H + 6, TW.W + 24, 12], [-6, TW.H / 2, 12, TW.H], [TW.W + 6, TW.H / 2, 12, TW.H]].forEach(([cx, cz, w, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, WH, d), wallM); m.position.set(cx, WH / 2 - 4, cz); sc.add(m); solids.push({ x: cx, z: cz, w, d, h: WH }); const lip = new THREE.Mesh(new THREE.BoxGeometry(w + 4, 6, d + 4), lipM); lip.position.set(cx, WH - 2, cz); sc.add(lip); });
   /* buildings */
-  const blds = ['house', 'studio'].map(building); blds.forEach(b => { sc.add(b); solids.push(b.userData.solid); });
+  const blds = Object.keys(BLD).filter(k => TOWN[k]).map(building); blds.forEach(b => { sc.add(b); solids.push(b.userData.solid); });
   /* pieces */
   const items = [];
   for (const it of TOWN.items) {
@@ -207,7 +211,7 @@ async function buildRoom(R) {
     const sp = standPt(s); stns.push({ s, at: { x: sp.x, z: sp.y } });
     if (!s.wall && w > 30) solids.push({ x: s.x + ox, z: z - 6, w: w * .84, d: th + 24, h });
   }
-  return { sc, col, items: [], blds: [], stns, kind: R === HOUSE ? 'house' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
+  return { sc, col, items: [], blds: [], stns, kind: R === HOUSE ? 'house' : R.shop ? 'shop' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
 }
 
 /* ---------- the view: overlay, controls, loop ---------- */
@@ -218,7 +222,7 @@ function ui() {
   o.innerHTML = '<canvas id="r3cv"></canvas><div id="r3top"><button id="r3back">◀ Back to 2D</button><b id="r3ttl"></b><button id="r3clk" aria-label="Clock">☀️</button></div><div id="r3stick"><i></i></div><button id="r3act"></button><div id="r3hint">Left thumb: walk · Drag: look around</div><div id="r3fade"></div>';
   document.body.append(o); return o;
 }
-function setTitle() { const t = { town: 'Little Town · 3D', home: 'Shoebox Studio · 3D', house: 'My House · 3D' }[R.S.kind]; document.getElementById('r3ttl').textContent = t; }
+function setTitle() { const t = { town: 'Little Town · 3D', home: 'Shoebox Studio · 3D', house: 'My House · 3D', shop: (SHOPS[SHOP_ID] || SHOPS.supply).name + ' · 3D' }[R.S.kind]; document.getElementById('r3ttl').textContent = t; }
 export async function open(where) {
   if (R) return; GLOW = GLOW || glowTex(); BLOB = BLOB || blobTex(); SPARK = SPARK || sparkTex();
   const o = ui(), canvas = o.querySelector('#r3cv');
@@ -236,21 +240,21 @@ export async function open(where) {
 async function goScene(where, at) {
   R.busy = true; const f = document.getElementById('r3fade'); f.classList.add('on');
   if (R.S) disposeScene(R.S.sc);
-  R.S = where === 'town' ? await buildTown() : await buildRoom(where === 'house' ? HOUSE : LOB);
+  R.S = where === 'town' ? await buildTown() : await buildRoom(where === 'house' ? HOUSE : where === 'shop' ? shopRoom() : LOB);
   if (where === 'town') { const h = at || TOWN.hero; R.pos = { x: h.x, z: h.y }; /* face the middle of town, so the first look is the town and not a wall */ R.yaw = at && at.yaw != null ? at.yaw : Math.atan2(-(TW.W / 2 - h.x), -(TW.H * .55 - h.y)); }
   else { const R0 = R.S.R; /* start in the open middle of the floor (or further back if that is where you stood), looking at the back wall */ const h = R0.hero || { x: R0.W / 2, y: 0 }, open = R.S.bounds.z0 + (R.S.bounds.z1 - R.S.bounds.z0) * .5; R.pos = { x: Math.max(R.S.bounds.x0 + 30, Math.min(R.S.bounds.x1 - 30, h.x)), z: Math.max(open, h.y) }; R.yaw = 0; }
-  R.pitch = -.08; setTitle(); LS.set('where', { s: where === 'town' ? 'town' : where, walk: 1 });
+  R.pitch = -.08; setTitle(); LS.set('where', { s: where === 'town' ? 'town' : where, walk: 1, shop: where === 'shop' ? SHOP_ID : undefined });
   requestAnimationFrame(() => { f.classList.remove('on'); R.busy = false; });
 }
 function disposeScene(sc) { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) (Array.isArray(m) ? m : [m]).forEach(x => { if (x.map && x.map !== GLOW && x.map !== BLOB && x.map !== SPARK) x.map.dispose(); x.dispose(); }); }); }
 export function close(toScreen) {
   if (!R) return; cancelAnimationFrame(R.raf); const kind = R.S && R.S.kind, p = R.pos;
-  if (kind === 'town') { TOWN.hero.x = p.x; TOWN.hero.y = p.z; LS.set('town', TOWN); } else if (kind === 'house') { HOUSE.hero = { x: p.x, y: p.z }; LS.set('househero', HOUSE.hero); } else if (kind === 'home') { LOB.hero = { x: p.x, y: p.z }; LS.set('lobby', LOB.hero); }
+  if (kind === 'town') { TOWN.hero.x = p.x; TOWN.hero.y = p.z; LS.set('town', TOWN); } else if (kind === 'house') { HOUSE.hero = { x: p.x, y: p.z }; LS.set('househero', HOUSE.hero); } else if (kind === 'shop') { const r = R.S.R; r.hero = { x: p.x, y: p.z }; LS.set(r.key, r.hero); } else if (kind === 'home') { LOB.hero = { x: p.x, y: p.z }; LS.set('lobby', LOB.hero); }
   removeEventListener('resize', R.fit); R.unbind && R.unbind(); if (R.S) disposeScene(R.S.sc); R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch (e) { }
   document.getElementById('r3d').classList.remove('on'); R = null; OVL = null; setVol && setVol();
-  const scr = toScreen || (kind === 'town' ? 'town' : kind === 'house' ? 'house' : 'home');
+  const scr = toScreen || (kind === 'town' ? 'town' : kind === 'house' ? 'house' : kind === 'shop' ? 'shop' : 'home');
   if (scr === 'town') { go('town'); ST.walk = true; ST.cam.x = TOWN.hero.x - W / 2 / ST.z; ST.cam.y = TOWN.hero.y - H * .45 / ST.z; buildStageUI(); LS.set('where', { s: 'town', walk: 1 }); }
-  else if (scr === 'house' || scr === 'home') { RESUMING = 1; try { go(scr); } finally { RESUMING = 0; } }
+  else if (scr === 'house' || scr === 'home' || scr === 'shop') { RESUMING = 1; try { go(scr); } finally { RESUMING = 0; } }
 }
 export function isOpen() { return !!R; }
 
@@ -273,9 +277,9 @@ function bindControls(o) {
 }
 function act() {
   const n = R.near; if (!n || R.busy) return; SFX.tick();
-  if (n.bld) { goScene(n.bld === 'house' ? 'house' : 'home'); return; }
+  if (n.bld) { const b = BLD[n.bld]; if (b.shop) SHOP_ID = b.shop; goScene(b.scr); return; }
   if (n.door) { n.door.it.open = !n.door.it.open; LS.set('town', TOWN); return; }
-  if (n.stn) { const s = n.stn.s; if (s.id === 'door' || s.id === 'hdoor') { const k = s.id === 'door' ? 'studio' : 'house', b = TOWN[k], d = BLD[k].door; goScene('town', { x: b.x + d.x, y: b.y + d.y + 40, yaw: Math.PI }); return; }
+  if (n.stn) { const s = n.stn.s; if (s.id === 'door' || s.id === 'hdoor' || s.out) { const k = s.out || (s.id === 'door' ? 'studio' : 'house'), b = TOWN[k], d = BLD[k].door; goScene('town', { x: b.x + d.x, y: b.y + d.y + 40, yaw: Math.PI }); return; }
     if (s.soon) { toast(s.name + ' is coming in a later pass'); return; }
     close(R.S.kind); setTimeout(() => enterStn(s), 60); }
 }
@@ -320,9 +324,9 @@ function loop(ts) {
   for (const b of S.blds) { b.userData.glow.material.opacity = k * .55; b.userData.front.material.emissiveIntensity = k * .25; }
   /* what's close enough to use */
   let near = null, bd = 1e9;
-  if (S.kind === 'town') { for (const b of S.blds) { const d = Math.hypot(p.x - b.userData.door.x, p.z - b.userData.door.z); if (d < 70 && d < bd) { bd = d; near = { bld: b.userData.kind, txt: b.userData.kind === 'house' ? '🚪 Go into My House' : '🚪 Go into the Studio' }; } }
+  if (S.kind === 'town') { for (const b of S.blds) { const d = Math.hypot(p.x - b.userData.door.x, p.z - b.userData.door.z); if (d < 70 && d < bd) { bd = d; near = { bld: b.userData.kind, txt: '🚪 Go into ' + BLD[b.userData.kind].name }; } }
     for (const r of S.items) if (r.door) { const d = Math.hypot(p.x - r.it.x, p.z - r.it.y); if (d < 60 && d < bd) { bd = d; near = { door: r, txt: r.it.open ? '🚪 Close' : '🚪 Open' }; } } }
-  else for (const n of S.stns) { const d = Math.hypot(p.x - n.at.x, p.z - n.at.z); if (d < 64 && d < bd) { bd = d; const s = n.s; near = { stn: n, txt: s.soon ? '🔒 ' + s.name + ' (soon)' : (s.id === 'door' || s.id === 'hdoor' ? '🚪 ' : '👉 ') + (s.verb || s.name) }; } }
+  else for (const n of S.stns) { const d = Math.hypot(p.x - n.at.x, p.z - n.at.z); if (d < 64 && d < bd) { bd = d; const s = n.s; near = { stn: n, txt: s.soon ? '🔒 ' + s.name + ' (soon)' : (s.id === 'door' || s.id === 'hdoor' || s.out ? '🚪 ' : '👉 ') + (s.verb || s.name) }; } }
   if ((near && near.txt) !== (R.near && R.near.txt)) { const b = document.getElementById('r3act'); b.textContent = near ? near.txt : ''; b.classList.toggle('on', !!near); }
   R.near = near;
   /* camera */

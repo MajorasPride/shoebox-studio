@@ -288,18 +288,18 @@ const $=s=>document.querySelector(s);
 const cv=$('#cv'),g=cv.getContext('2d');
 let W=0,H=0,DPR=1,NOW=0,DT=0,SCR='title',FROM='',RESUMING=0;
 /* v1.5: the game remembers where you left off (the studio, your house or Little Town) and starts you there. New players start in the studio. */
-function resume(){const wh=(typeof LS!=='undefined'&&LS.get('where',null))||{s:'home'};const s=['home','house','town'].includes(wh.s)?wh.s:'home';if(s==='house'){const hh=LS.get('househero',null);if(hh)HOUSE.hero=hh}RESUMING=1;try{go(s)}finally{RESUMING=0}if(s==='town'&&wh.walk){ST.walk=true;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;buildStageUI();LS.set('where',{s:'town',walk:1})}}
+function resume(){const wh=(typeof LS!=='undefined'&&LS.get('where',null))||{s:'home'};const s=['home','house','town','shop'].includes(wh.s)?wh.s:'home';if(s==='house'){const hh=LS.get('househero',null);if(hh)HOUSE.hero=hh}if(s==='shop'){if(wh.shop&&SHOPS[wh.shop])SHOP_ID=wh.shop;const sh=LS.get(shopRoom().key,null);if(sh)shopRoom().hero=sh}RESUMING=1;try{go(s)}finally{RESUMING=0}if(s==='town'&&wh.walk){ST.walk=true;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;buildStageUI();LS.set('where',{s:'town',walk:1})}}
 const TAU=Math.PI*2,clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR)}
-addEventListener('resize',()=>{resize();if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(SCR==='home'||SCR==='house'){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
+addEventListener('resize',()=>{resize();if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(isRoomScr(SCR)){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
 const LS={get(k,d){try{const v=localStorage.getItem('craftloft_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('craftloft_'+k,JSON.stringify(v));return true}catch(e){return false}}};
 /* ================= BUILT-IN TOOLS (Story Shelf, Beat Bop Doodle) ================= */
 /* Each tool is its own page in a folder of this repo. openTool() shows it full screen in a frame, with a Back button on top.
    To add a tool: put its page in a folder, add one line to TOOLS, then call openTool('id') from a station. */
 const TOOLS={shelf:{src:'story-shelf/index.html',name:'Story Shelf'},bbd:{src:'beat-bop-doodle/index.html',name:'Beat Bop Doodle'}};
 let OVL=null;
-function openTool(id){const t=TOOLS[id];if(!t||OVL)return;OVL=id;$('#ovlSave').style.display=id==='bbd'?'':'none';closeDlg();$('#ovlTtl').textContent=t.name;$('#ovlBack').textContent=SCR==='house'?'◀ Back to the house':'◀ Back to the studio';$('#ovlOut').href=t.src;
+function openTool(id){const t=TOOLS[id];if(!t||OVL)return;OVL=id;$('#ovlSave').style.display=id==='bbd'?'':'none';closeDlg();$('#ovlTtl').textContent=t.name;$('#ovlBack').textContent=SCR==='house'?'◀ Back to the house':SCR==='shop'?'◀ Back to the store':'◀ Back to the studio';$('#ovlOut').href=t.src;
   const f=document.createElement('iframe');f.title=t.name;f.setAttribute('allow','autoplay; fullscreen; clipboard-write');f.src=t.src;$('#ovlBox').append(f);$('#ovl').classList.add('on');$('#lobGo').style.display='none';setVol();
   try{history.pushState({sbsTool:id},'')}catch(e){}}
 function closeTool(fromBack){if(!OVL)return;if(OVL==='proj'){projClose(fromBack);return}if(OVL==='vhs'){vhsClose(fromBack);return}if(OVL==='r3d'){if(R3&&R3.isOpen())R3.close();else OVL=null;if(!fromBack){try{if(history.state&&history.state.sbsTool)history.back()}catch(e){}}return}OVL=null;$('#ovl').classList.remove('on');$('#ovlBox').innerHTML='';setVol();RM.near=undefined;try{SFX.tick()}catch(e){}
@@ -690,9 +690,46 @@ if(!TOWN)TOWN=mkShowTown();/* v1.6a: only a brand-new save gets the showcase tow
 if(!TOWN.house)TOWN.house={x:930,y:500};
 /* v1.5: the studio is a building in Little Town too. Same rules as the house: walk to it to go in, drag it in build mode to move it. */
 if(!TOWN.studio)TOWN.studio={x:600,y:470};
-const HDOOR={x:27,y:18},SDOOR={x:0,y:20},BLD={house:{door:HDOOR,hw:88,top:154,scr:'house'},studio:{door:SDOOR,hw:112,top:196,scr:'home'}};
-function bldAt(w){for(const k of['house','studio']){const p=TOWN[k],b=BLD[k];if(Math.abs(w.x-p.x)<b.hw&&w.y>p.y-b.top&&w.y<p.y+12)return k}return null}
+const HDOOR={x:27,y:18},SDOOR={x:0,y:20},BLD={house:{door:HDOOR,hw:88,top:154,scr:'house',name:'My House'},studio:{door:SDOOR,hw:112,top:196,scr:'home',name:'the Studio'},
+  /* T032: shops are buildings too. Each shop is one line here (scr:'shop' + its SHOPS id) and one line in SHOPS (look, room). Its place is saved as TOWN[id]. */
+  supply:{door:{x:47,y:20},hw:92,top:182,scr:'shop',shop:'supply',name:'the Supply Store'}};
+/* T032: a building that a town does not have yet gets a free spot near the road (old towns and the showcase town alike; nothing else moves) */
+function bldSpot(T,k){const b=BLD[k],roads=(T.items||[]).filter(isRoad),pad=18;let best=null,bd=1e9;
+  const clear=p=>{const x0=p.x-b.hw-pad,x1=p.x+b.hw+pad,y0=p.y-b.top-pad,y1=p.y+44;
+    for(const it of T.items||[]){const r=itemRect(it);if(r&&r.x<x1&&r.x+r.w>x0&&r.y<y1&&r.y+r.h>y0)return false}
+    for(const o in BLD){if(o===k||!T[o])continue;const q=T[o],c=BLD[o];if(q.x-c.hw-pad<x1&&q.x+c.hw+pad>x0&&q.y-c.top<y1&&q.y+44>y0)return false}
+    const h=T.hero;return!(h&&h.x>x0-20&&h.x<x1+20&&h.y>y0&&h.y<y1+30)};
+  for(let y=TW.H-60;y>=b.top+60;y-=20)for(let x=b.hw+40;x<=TW.W-b.hw-40;x+=20){const p={x,y};if(!clear(p))continue;let d=roads.length?1e9:Math.hypot(x-TW.W/2,y-TW.H/2);for(const r of roads)d=Math.min(d,Math.hypot(r.x-x,r.y-(y+30)));if(d<bd){bd=d;best=p}}
+  return best||{x:TW.W-b.hw-60,y:b.top+80}}
+function ensureBlds(T){let ch=0;for(const k in BLD)if(!T[k]){T[k]=bldSpot(T,k);ch=1}return ch}
+if(ensureBlds(TOWN))LS.set('town',TOWN);
+const BLDDRAW=k=>k==='house'?drawTownHouse:k==='studio'?drawTownStudio:drawTownSupply;/* looked up at draw time, so Art Swap's wrapped versions are used */
+function goBld(k){const b=BLD[k];if(b.shop)SHOP_ID=b.shop;go(b.scr)}
+function bldAt(w){for(const k in BLD){const p=TOWN[k],b=BLD[k];if(Math.abs(w.x-p.x)<b.hw&&w.y>p.y-b.top&&w.y<p.y+12)return k}return null}
 function houseAt(w){return bldAt(w)==='house'}
+/* T032: the Supply Store: a cardboard shop front with a striped paper awning, a painted sign and a window full of supplies */
+function drawTownSupply(c,p,tag){c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,100,15,0,0,TAU);c.fill();
+  c.fillStyle='#e7c48c';rr(c,-82,-128,164,128,5);c.fill();c.strokeStyle='#8b5a3c';c.lineWidth=3;c.stroke();
+  c.strokeStyle='rgba(139,90,60,.22)';c.lineWidth=1.5;c.beginPath();for(let x=-72;x<80;x+=11){c.moveTo(x,-124);c.lineTo(x,-4)}c.stroke();
+  /* sign board on the roof */
+  c.save();c.translate(0,-148);c.rotate(.03);c.fillStyle='#3b6fb6';rr(c,-78,-20,156,34,6);c.fill();c.strokeStyle='#fbf6ea';c.lineWidth=3;c.stroke();c.fillStyle='#fbf6ea';c.font='900 15px ui-rounded,system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('SUPPLY STORE',0,-3);c.textBaseline='alphabetic';c.restore();
+  c.fillStyle='#8b5a3c';c.fillRect(-60,-134,5,8);c.fillRect(55,-134,5,8);
+  /* striped awning with a scalloped edge */
+  for(let i=0;i<9;i++){c.fillStyle=i%2?'#fbf6ea':'#e8443a';c.beginPath();c.moveTo(-90+i*20,-122);c.lineTo(-70+i*20,-122);c.lineTo(-68+i*20,-98);c.lineTo(-92+i*20,-98);c.closePath();c.fill();c.beginPath();c.arc(-80+i*20,-98,10.5,0,Math.PI);c.fill()}
+  c.strokeStyle='rgba(120,30,25,.35)';c.lineWidth=2;c.beginPath();c.moveTo(-92,-98);c.lineTo(88,-98);c.stroke();
+  /* shop window: crayons in a cup, paper rolls, a paint pot */
+  c.fillStyle='#fbf6ea';rr(c,-72,-78,78,56,4);c.fill();c.fillStyle=nightK()>.35?'#ffe2a0':'#cfe9f4';c.fillRect(-68,-74,70,48);
+  ['#e8443a','#f7d23e','#4fb3e8','#5bbf5a','#8b5cb6'].forEach((k,i)=>{c.fillStyle=k;c.fillRect(-62+i*5,-58-(i%2)*4,4,22);c.beginPath();c.moveTo(-62+i*5,-58-(i%2)*4);c.lineTo(-60+i*5,-63-(i%2)*4);c.lineTo(-58+i*5,-58-(i%2)*4);c.fill()});
+  c.fillStyle='#8b5a3c';c.fillRect(-64,-40,28,14);
+  [['#f191b3',-24],['#62b6e8',-12]].forEach(([k,x])=>{c.fillStyle=k;c.fillRect(x-5,-66,10,40);c.fillStyle='rgba(255,255,255,.5)';c.beginPath();c.ellipse(x,-66,5,2.5,0,0,TAU);c.fill()});
+  c.fillStyle='#63b35d';rr(c,-6,-42,10,16,2);c.fill();c.fillStyle='#fbf6ea';c.fillRect(-6,-44,10,3);
+  c.fillStyle='#8b5a3c';c.fillRect(-72,-24,78,4);
+  /* door with an OPEN card */
+  c.fillStyle='#6b4a34';rr(c,22,-80,50,80,6);c.fill();c.fillStyle='#e8443a';rr(c,26,-76,42,76,4);c.fill();c.fillStyle='#cfe9f4';rr(c,32,-70,30,26,3);c.fill();
+  c.fillStyle='#fbf6ea';c.fillRect(36,-40,22,10);c.fillStyle='#2d8a57';c.font='900 7px system-ui';c.textAlign='center';c.fillText('OPEN',47,-32.5);c.fillStyle='#f5d142';c.beginPath();c.arc(62,-22,3,0,TAU);c.fill();
+  c.fillStyle='#f5d142';c.beginPath();c.ellipse(47,9,24,6,0,0,TAU);c.fill();
+  if(tag){c.font='800 13px ui-rounded,system-ui,sans-serif';const t='Supply Store',w=c.measureText(t).width+16;c.translate(0,-196);c.rotate(-.02);c.fillStyle='#fbf6ea';c.shadowColor='rgba(0,0,0,.3)';c.shadowBlur=4;c.shadowOffsetY=2;rr(c,-w/2,-11,w,22,5);c.fill();c.shadowColor='transparent';c.fillStyle='#3b2f2a';c.textAlign='center';c.textBaseline='middle';c.fillText(t,0,1);c.font='700 10.5px system-ui';c.fillStyle='#fff';c.shadowColor='rgba(0,0,0,.6)';c.shadowBlur=3;c.fillText(tag,0,18);c.shadowColor='transparent';c.textBaseline='alphabetic'}
+  c.restore()}
 function drawTownStudio(c,p,tag){c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,116,16,0,0,TAU);c.fill();
   /* a big cardboard shoebox standing on its side, lid propped up as an awning */
   c.fillStyle='#c98e55';rr(c,-100,-150,200,150,6);c.fill();c.strokeStyle='#7d5233';c.lineWidth=3;c.stroke();
@@ -742,7 +779,7 @@ function sMove(e){const st=ST.st;if(!st)return;const w=sw(e.clientX,e.clientY);
   else if(st.k==='pan'){ST.cam.x=st.cx-(e.clientX-st.sx)/ST.z;ST.cam.y=st.cy-(e.clientY-st.sy)/ST.z;clampCam()}
   else if(st.k==='house'){if(!st.mv&&Math.hypot(e.clientX-st.sx,e.clientY-st.sy)>10)st.mv=1;if(st.mv){const b=TOWN[st.b];b.x=clamp(w.x-st.ox,120,TW.W-120);b.y=clamp(w.y-st.oy,230,TW.H-40)}}
   else if(st.k==='walk')ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)}}
-function sUp(e,pin){const st=ST.st;ST.st=null;if(st&&st.k==='house'){if(st.mv)saveStage();else if(!pin){SFX.tick();go(BLD[st.b].scr)}return}if(st&&(st.k==='drag'||st.k==='spec'||(st.k==='hud'&&st.moved)))saveStage()}
+function sUp(e,pin){const st=ST.st;ST.st=null;if(st&&st.k==='house'){if(st.mv)saveStage();else if(!pin){SFX.tick();goBld(st.b)}return}if(st&&(st.k==='drag'||st.k==='spec'||(st.k==='hud'&&st.moved)))saveStage()}
 function sPinch(pz){if(pz.cx0===undefined){pz.cx0=ST.cam.x;pz.cy0=ST.cam.y}ST.cam.x=pz.cx0-(pz.cx-pz.mx)/ST.z;ST.cam.y=pz.cy0-(pz.cy-pz.my)/ST.z;clampCam()}
 /* ---- play ---- */
 function buildGrid(){const gr=new Uint8Array(GW*GH);[['solid',1],['bouncy',3],['ouch',5]].forEach(([beh,bit])=>{const c=mkCanvas(GW,GH,true),x=c._x;x.scale(.25,.25);x.translate(0,-LV.TOP);LVL.items.forEach(it=>{if(it.beh===beh)drawItem(x,it,0,0)});const d=x.getImageData(0,0,GW,GH).data;for(let i=0;i<GW*GH;i++)if(d[i*4+3]>90)gr[i]|=bit});ST.grid=gr}
@@ -770,15 +807,15 @@ function updStage(){ST.t=(ST.t||0)+DT;if(ST.kind==='town')townActs(DT);
     if(ST.hop){const h=ST.hop;h.t+=DT/.5;const k=Math.min(1,h.t);hr.x=h.x0+(h.x1-h.x0)*k;hr.y=h.y0+(h.y1-h.y0)*k;ST.th.z=Math.sin(k*Math.PI)*h.ht;ST.th.ph+=DT*10;if(k>=1){ST.hop=null;ST.th.z=0;SFX.step()}}
     else if(ST.tgt){const dx=ST.tgt.x-hr.x,dy=ST.tgt.y-hr.y,d=Math.hypot(dx,dy);if(d>4){const v=Math.min(d,175*DT),ux=dx/d,uy=dy/d,nx=hr.x+ux*v,ny=hr.y+uy*v,cur=townHit(hr.x,hr.y),free=(x,y)=>{const h=townHit(x,y);return !h||h===cur},hit=townHit(nx,ny);let moved=true;
         if(hit&&hit!==cur){moved=false;if((hit.tb||'block')==='climb'){let sd=10,ex=0,ey=0;for(;sd<420;sd+=8){ex=hr.x+ux*sd;ey=hr.y+uy*sd;if(townHit(ex,ey)!==hit)break}ex+=ux*8;ey+=uy*8;if(sd<420&&!townHit(ex,ey)&&ex>20&&ex<TW.W-20&&ey>40&&ey<TW.H-10){const r=itemRect(hit);ST.hop={x0:hr.x,y0:hr.y,x1:ex,y1:ey,t:0,ht:Math.min(90,r.h*.7+24)};SFX.jump()}else ST.tgt=null}
-          else if(free(nx,hr.y)&&Math.abs(ux)>.2){hr.x=nx;moved=true}else if(free(hr.x,ny)&&Math.abs(uy)>.2){hr.y=ny;moved=true}else if(ST.pendH&&d<190){const bk=ST.pendH;ST.pendH=0;ST.tgt=null;SFX.tick();go(BLD[bk].scr);return}else{ST.tgt=null;ST.pendH=0;if(!ST.bumpT||NOW-ST.bumpT>900){ST.bumpT=NOW;SFX.thud()}}}
+          else if(free(nx,hr.y)&&Math.abs(ux)>.2){hr.x=nx;moved=true}else if(free(hr.x,ny)&&Math.abs(uy)>.2){hr.y=ny;moved=true}else if(ST.pendH&&d<190){const bk=ST.pendH;ST.pendH=0;ST.tgt=null;SFX.tick();goBld(bk);return}else{ST.tgt=null;ST.pendH=0;if(!ST.bumpT||NOW-ST.bumpT>900){ST.bumpT=NOW;SFX.thud()}}}
         else{hr.x=nx;hr.y=ny}
-        if(moved){if(Math.abs(dx)>2)ST.th.face=dx>0?1:-1;const p0=ST.th.ph;ST.th.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(ST.th.ph/Math.PI))SFX.step()}}else{ST.tgt=null;LS.set('town',TOWN);if(ST.pendH){const bk=ST.pendH;ST.pendH=0;SFX.tick();go(BLD[bk].scr);return}}}
+        if(moved){if(Math.abs(dx)>2)ST.th.face=dx>0?1:-1;const p0=ST.th.ph;ST.th.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(ST.th.ph/Math.PI))SFX.step()}}else{ST.tgt=null;LS.set('town',TOWN);if(ST.pendH){const bk=ST.pendH;ST.pendH=0;SFX.tick();goBld(bk);return}}}
     petFollow(hr.x,hr.y,ST.th.z||0,40);
     const vw=W/ST.z,vh=H/ST.z;ST.cam.x+=(hr.x-vw/2-ST.cam.x)*Math.min(1,DT*5);ST.cam.y+=(hr.y-vh*.45-ST.cam.y)*Math.min(1,DT*5)}}
 /* little town: what you cannot walk through */
 const TBEH={block:{em:'🧱',name:'Blocks the way'},pass:{em:'👣',name:'Walk through'},climb:{em:'🧗',name:'Climb over'}};
 function foot(it){const r=itemRect(it);if(!r)return null;const d=clamp(r.h*.25,10,34),hw=r.w*.4;return{x0:it.x-hw-9,x1:it.x+hw+9,y0:it.y-d,y1:it.y+6}}
-function townHit(x,y){const hp=TOWN.house;if(x>hp.x-80&&x<hp.x+80&&y>hp.y-46&&y<hp.y+5)return hp;const sp=TOWN.studio;if(x>sp.x-104&&x<sp.x+104&&y>sp.y-50&&y<sp.y+5)return sp;for(const it of TOWN.items){if((it.tb||'block')==='pass'||it.act==='vehicle'||(it.act==='door'&&it.open)||isRoad(it))continue;const f=foot(it);if(f&&x>f.x0&&x<f.x1&&y>f.y0&&y<f.y1)return it}return null}
+function townHit(x,y){const hp=TOWN.house;if(x>hp.x-80&&x<hp.x+80&&y>hp.y-46&&y<hp.y+5)return hp;const sp=TOWN.studio;if(x>sp.x-104&&x<sp.x+104&&y>sp.y-50&&y<sp.y+5)return sp;for(const k in BLD){if(k==='house'||k==='studio')continue;const q=TOWN[k],b=BLD[k];if(q&&x>q.x-b.hw+6&&x<q.x+b.hw-6&&y>q.y-48&&y<q.y+5)return q}for(const it of TOWN.items){if((it.tb||'block')==='pass'||it.act==='vehicle'||(it.act==='door'&&it.open)||isRoad(it))continue;const f=foot(it);if(f&&x>f.x0&&x<f.x1&&y>f.y0&&y<f.y1)return it}return null}
 /* ---- the placeholder hero: a little paper pal with a folded hat ---- */
 function drawHero(c,x,y,face,ph,air){c.save();c.translate(x,y);c.scale(face,1);const s=Math.sin(ph)*(air?.25:.7),part=(fn,col)=>{fn();c.strokeStyle='#fff';c.lineWidth=4;c.lineJoin='round';c.stroke();fn();c.fillStyle=col;c.fill()};
   for(const k of[-1,1]){c.save();c.translate(k*4.5,-13);c.rotate(k*s);part(()=>rr(c,-3.5,0,7,13,3),'#3767bb');c.restore()}
@@ -803,8 +840,8 @@ function drawStage(){const z=ST.z,cam=ST.cam,t=ST.t||0,lvl=ST.kind==='level';
   else{g.fillStyle='rgba(0,0,0,.3)';g.fillRect(8,10,TW.W,TW.H);g.fillStyle=g.createPattern(KRAFT,'repeat');g.fillRect(0,0,TW.W,TW.H);g.strokeStyle='rgba(90,60,30,.13)';g.lineWidth=1.5;g.beginPath();for(let x=100;x<TW.W;x+=100){g.moveTo(x,0);g.lineTo(x,TW.H)}for(let y=100;y<TW.H;y+=100){g.moveTo(0,y);g.lineTo(TW.W,y)}g.stroke();
     g.fillStyle='rgba(250,240,190,.75)';[[0,0],[TW.W,0],[0,TW.H],[TW.W,TW.H]].forEach((p,i)=>{g.save();g.translate(p[0],p[1]);g.rotate(Math.PI/4+i*Math.PI/2);g.fillRect(-45,-13,90,26);g.restore()});
     g.fillStyle='rgba(90,60,30,.45)';g.font='900 40px system-ui';g.textAlign='center';g.fillText('Little Town',TW.W/2,70);
-    const hr=TOWN.hero,hz=ST.th.z||0,arr=drawOrder().map(it=>({y:ordY(it),it})).concat([{y:hz?1e9:hr.y,hero:1},{y:PET.z>2?1e9-1:PET.y-.1,pet:1},{y:TOWN.house.y,house:1},{y:TOWN.studio.y,studio:1}]).sort((a,b)=>a.y-b.y);if(!PET.ok)petSnap(hr.x,hr.y);
-    for(const o of arr){if(o.studio){drawTownStudio(g,TOWN.studio,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.house){drawTownHouse(g,TOWN.house,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.pet){if(PET.kind!=='none'){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(PET.x,PET.y,12,4,0,0,TAU);g.fill();drawPet(g,PET.x,PET.y-PET.z)}}else if(o.hero){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(hr.x,hr.y,14,5,0,0,TAU);g.fill();drawHero(g,hr.x,hr.y-hz,ST.th.face,ST.th.ph,hz>0)}else{const r=itemRect(o.it);if(!r)continue;if(!isRoad(o.it)){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(o.it.x,o.it.y,r.w*.45,Math.min(12,r.w*.12),0,0,TAU);g.fill()}drawTownItem(o.it,r,t)}}
+    const hr=TOWN.hero,hz=ST.th.z||0,arr=drawOrder().map(it=>({y:ordY(it),it})).concat([{y:hz?1e9:hr.y,hero:1},{y:PET.z>2?1e9-1:PET.y-.1,pet:1},{y:TOWN.house.y,house:1},{y:TOWN.studio.y,studio:1}].concat(Object.keys(BLD).filter(k=>k!=='house'&&k!=='studio'&&TOWN[k]).map(k=>({y:TOWN[k].y,bk:k})))).sort((a,b)=>a.y-b.y);if(!PET.ok)petSnap(hr.x,hr.y);
+    for(const o of arr){if(o.bk){BLDDRAW(o.bk)(g,TOWN[o.bk],ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.studio){drawTownStudio(g,TOWN.studio,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.house){drawTownHouse(g,TOWN.house,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.pet){if(PET.kind!=='none'){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(PET.x,PET.y,12,4,0,0,TAU);g.fill();drawPet(g,PET.x,PET.y-PET.z)}}else if(o.hero){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(hr.x,hr.y,14,5,0,0,TAU);g.fill();drawHero(g,hr.x,hr.y-hz,ST.th.face,ST.th.ph,hz>0)}else{const r=itemRect(o.it);if(!r)continue;if(!isRoad(o.it)){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(o.it.x,o.it.y,r.w*.45,Math.min(12,r.w*.12),0,0,TAU);g.fill()}drawTownItem(o.it,r,t)}}
     townNight();
     if(ST.walk&&ST.tgt){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(ST.tgt.x,ST.tgt.y,9+Math.sin(t*8)*2,0,TAU);g.stroke()}}
   if(!ST.play&&!ST.walk){
@@ -847,7 +884,6 @@ const STATIONS=[
   {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:300,y:715,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
   {id:'fridge',name:'Fridge Gallery',sub:'Example wall',x:110,y:690,act:()=>fridgeOpen(),verb:'Look at the fridge'},/* T021 */
   {id:'artswap',name:'Art Swap',sub:'Use your own art',x:635,y:742,act:()=>artSwapOpen(),verb:'Open the Art Swap board',tagY:-112},/* T022 (Q041: its own station) */
-  {id:'shop',name:'Supply Shop',x:450,y:745,soon:1},
   {id:'mirror',name:'Dress-up Mirror',x:800,y:728,soon:1}];
 LOB.stn=STATIONS;
 /* ---- the house (a small room you enter from Little Town). Add things to it the same way: one line here, one draw function. ---- */
@@ -856,6 +892,16 @@ const HOUSE={key:'househero',W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:460,y:2
   {id:'deco',name:'Display Shelf',x:290,y:210,wall:1,soon:1,tagY:-150},
   {id:'tv',name:'Game Console',sub:'Beat Bop Doodle',x:140,y:340,act:()=>openTool('bbd'),verb:'Play Beat Bop Doodle',tagY:-182},
   {id:'beds',name:'Pet Beds',x:150,y:548,soon:1,tagY:-50}]};
+/* ---- T032: SHOPS. Every shop is a building in Little Town (BLD, drawTown*) with a small room inside (mkShopRoom).
+   To add a shop (T027): one line in BLD, one draw function for its building, one entry here with its room stations. ---- */
+let SHOP_ID='supply';
+function mkShopRoom(id,stn){return{key:'shophero_'+id,shop:id,W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:280,y:300},tgt:null,pend:null,face:1,ph:0,near:null,stn}}
+const SHOPS={supply:{id:'supply',name:'Supply Store',room:mkShopRoom('supply',[
+  {id:'sdoor',out:'supply',name:'Shop Door',sub:'Back to Little Town',x:460,y:210,wall:1,act:()=>leaveHouse('supply'),verb:'Go out to Little Town'},
+  {id:'sshelf',name:'Supply Shelves',x:128,y:210,wall:1,soon:1,tagY:-196},
+  {id:'shop',name:'Supply Counter',sub:'Buy art supplies',x:280,y:470,soon:1,tagY:-150}])}};
+const shopRoom=()=>(SHOPS[SHOP_ID]||SHOPS.supply).room;
+const isRoomScr=x=>x==='home'||x==='house'||x==='shop';
 let RM=LOB;
 const standPt=s=>({x:s.x,y:s.wall?s.y+38:s.y+34});
 const STATION_DRAW={
@@ -880,6 +926,16 @@ const STATION_DRAW={
     [-17,15].forEach((x,i)=>{c.save();c.translate(x,-64);c.rotate(NOW/(i?700:900));c.fillStyle='#3a3f4b';c.beginPath();c.arc(0,0,15,0,TAU);c.fill();c.fillStyle='#d5d2c8';for(let k=0;k<5;k++){const a=k*TAU/5;c.beginPath();c.arc(Math.cos(a)*8,Math.sin(a)*8,3,0,TAU);c.fill()}c.restore()});c.strokeStyle='#3a3f4b';c.lineWidth=2;c.beginPath();c.moveTo(-17,-50);c.lineTo(-30,-64);c.moveTo(15,-50);c.lineTo(28,-64);c.stroke()},
   /* ---- house things ---- */
   hdoor(c){STATION_DRAW.door(c)},
+  /* T032: the Supply Store's own door (the studio door with an OPEN card and a bell) and its wall shelves */
+  sdoor(c){STATION_DRAW.door(c);c.fillStyle='#fbf6ea';c.fillRect(-20,-118,40,16);c.strokeStyle='#8b5a3c';c.lineWidth=1.5;c.strokeRect(-20,-118,40,16);c.fillStyle='#2d8a57';c.font='900 10px system-ui';c.textAlign='center';c.fillText('OPEN',0,-106);c.fillStyle='#f5d142';c.beginPath();c.arc(30,-150,7,Math.PI,TAU);c.lineTo(37,-146);c.lineTo(23,-146);c.fill()},
+  sshelf(c){c.fillStyle='#a8703f';[-150,-104,-58].forEach(y=>{rr(c,-88,y,176,8,3);c.fill()});c.fillStyle='#8b5a3c';c.fillRect(-86,-170,6,120);c.fillRect(80,-170,6,120);
+    const K=['#e8443a','#f28a2e','#f7d23e','#5bbf5a','#4fb3e8','#3767bb','#8b5cb6','#f38bb3'];
+    K.forEach((k,i)=>{c.fillStyle=k;c.fillRect(-78+i*9,-174,7,24);c.beginPath();c.moveTo(-78+i*9,-174);c.lineTo(-74.5+i*9,-181);c.lineTo(-71+i*9,-174);c.fill()});
+    c.fillStyle='#fbf6ea';rr(c,10,-176,30,26,3);c.fill();c.fillStyle='#d6a868';rr(c,46,-172,30,22,3);c.fill();
+    ['#f191b3','#62b6e8','#f5d142','#63b35d','#fbf6ea'].forEach((k,i)=>{c.fillStyle=k;c.beginPath();c.ellipse(-70+i*16,-114,7,10,0,0,TAU);c.fill()});
+    ['#e8443a','#4fb3e8','#f7d23e'].forEach((k,i)=>{c.fillStyle='#fbf6ea';rr(c,14+i*24,-126,18,22,3);c.fill();c.fillStyle=k;c.fillRect(14+i*24,-122,18,6)});
+    ['#d9463e','#3767bb','#5bbf5a','#f28a2e'].forEach((k,i)=>{c.fillStyle=k;c.beginPath();c.arc(-66+i*20,-70,8,0,TAU);c.fill();c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.arc(-66+i*20,-70,2,0,TAU);c.fill()});
+    c.fillStyle='#caa76c';rr(c,16,-82,64,22,3);c.fill();c.fillStyle='#8b5a3c';c.font='800 9px system-ui';c.textAlign='center';c.fillText('PAPER',48,-68)},
   /* The console by the TV opens the in-game copy of Beat Bop Doodle. */
   tv(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,6,84,14,0,0,TAU);c.fill();
     c.fillStyle='#8b5a3c';c.fillRect(-66,-66,8,40);c.fillRect(58,-66,8,40);c.fillStyle='#b98552';rr(c,-74,-80,148,40,6);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=3;c.stroke();c.fillStyle='#6b4a34';c.fillRect(-58,-62,50,6);c.fillRect(8,-62,50,6);
@@ -965,7 +1021,15 @@ function drawHouseRoom(){const R=HOUSE,Wd=R.W;g.fillStyle='#4a3324';g.fillRect(-
   g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(140,420,34,11,0,0,TAU);g.fill();g.fillStyle='#f08a2e';g.beginPath();g.ellipse(140,413,32,13,0,0,TAU);g.fill();g.fillStyle='#d9761f';g.beginPath();g.arc(140,412,3,0,TAU);g.fill();
   /* DECORATION SPOT: a masking-tape outline on the floor. Things made in the game (clay pots, plants, dioramas) can stand here later. */
   g.save();g.translate(440,520);g.strokeStyle='rgba(250,240,190,.85)';g.lineWidth=5;g.setLineDash([18,9]);g.strokeRect(-56,-34,112,62);g.setLineDash([]);g.rotate(-.04);g.fillStyle='rgba(250,240,190,.92)';g.fillRect(-46,-9,92,18);g.fillStyle='#8b5a3c';g.font='800 10.5px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('decoration spot',0,1);g.textBaseline='alphabetic';g.restore()}
-LOB.bg=drawLobbyRoom;HOUSE.bg=drawHouseRoom;stnLoad(LOB);stnLoad(HOUSE);
+/* T032: inside a shop: a little store with a striped wall, a paper banner and a checkered floor mat */
+function drawShopRoom(){const R=RM.shop?RM:shopRoom(),Wd=R.W;g.fillStyle='#3e2a1e';g.fillRect(-600,-900,Wd+1200,1100);
+  g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(-600,200,Wd+1200,R.H+700);g.fillStyle='rgba(40,22,10,.55)';g.fillRect(-600,200,600,R.H+700);g.fillRect(Wd,200,600,R.H+700);g.fillRect(0,R.H,Wd,700);g.fillStyle='rgba(60,35,15,.12)';for(let x=0;x<Wd;x+=80)g.fillRect(x,200,2,R.H-200);
+  for(let x=0;x<Wd;x+=28){g.fillStyle=(x/28)%2?'#f6efe0':'#cfe3ef';g.fillRect(x,0,28,210)}g.fillStyle='#dcc296';g.fillRect(0,150,Wd,60);g.fillStyle='#8b5a3c';g.fillRect(0,148,Wd,5);g.fillRect(0,206,Wd,7);g.fillRect(0,0,Wd,12);g.fillRect(-8,0,8,R.H);g.fillRect(Wd,0,8,R.H);
+  for(let i=0;i<14;i++){const x=24+i*37,y=24+Math.sin(i/13*Math.PI)*12;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-11,y);g.lineTo(x+11,y);g.lineTo(x,y+18);g.fill()}
+  g.save();g.translate(312,92);g.rotate(-.02);g.fillStyle='#3b6fb6';rr(g,-88,-19,176,38,8);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=3;g.stroke();g.fillStyle='#fbf6ea';g.font='900 16px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText((SHOPS[R.shop]||SHOPS.supply).name.toUpperCase(),0,1);g.textBaseline='alphabetic';g.restore();
+  for(let j=0;j<2;j++)for(let i=0;i<8;i++){g.fillStyle=(i+j)%2?'rgba(232,68,58,.55)':'rgba(251,246,234,.6)';g.fillRect(Wd/2-160+i*40,500+j*36,40,36)}g.strokeStyle='rgba(120,30,25,.3)';g.lineWidth=3;g.strokeRect(Wd/2-160,500,320,72)}
+for(const k in SHOPS)SHOPS[k].room.bg=drawShopRoom;
+LOB.bg=drawLobbyRoom;HOUSE.bg=drawHouseRoom;stnLoad(LOB);stnLoad(HOUSE);for(const k in SHOPS)stnLoad(SHOPS[k].room);
 function leaveHouse(k){k=k||'house';go('town');const p=TOWN[k],dr=BLD[k].door;TOWN.hero.x=p.x+dr.x;TOWN.hero.y=p.y+dr.y;ST.walk=true;LS.set('where',{s:'town',walk:1});ST.th.face=1;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;LS.set('town',TOWN);buildStageUI()}
 function drawLobby(){const z=RM.z,cam=RM.cam;g.fillStyle='#3e2a1e';g.fillRect(0,0,W,H);g.save();g.scale(z,z);g.translate(-cam.x,-cam.y);RM.bg();
   const h=RM.hero,list=RM.stn.map(s=>({y:s.wall?-1:s.y,s})).concat([{y:h.y,hero:1},{y:PET.y-.1,pet:1}]).sort((a,b)=>a.y-b.y);
@@ -1118,14 +1182,14 @@ function renderChips(){const box=$('#chips');box.innerHTML='';
 function updBadge(){$('#nBox').textContent=LIB?LIB.length:TOYS.length}
 /* ---- screens ---- */
 let craftSeen=false;
-function showScr(){const m={lobbyUI:SCR==='home'||SCR==='house',classUI:SCR==='class',craftUI:SCR==='craft',stageUI:(SCR==='level'||SCR==='town')&&!ST.play,playUI:SCR==='level'&&ST.play,boxUI:SCR==='box',kitUI:SCR==='kit',lvlBar:SCR==='level'&&!ST.play};for(const k in m)$('#'+k).classList.toggle('on',m[k]);$('#top').style.display=SCR==='title'?'none':'flex';$('#bUndo').style.display=SCR==='craft'||SCR==='kit'?'':'none';$('#bHome').style.visibility=SCR==='home'?'hidden':'';$('#bBox').style.display=SCR==='box'||(SCR==='level'&&ST.play)?'none':'';$('#ttl').textContent={home:'Shoebox Studio',craft:'School Desk',level:'Make a Level',town:'Little Town',house:'My House',box:'Toy Box',class:'Art Class',kit:'Pixel UI Kit',title:''}[SCR];$('#bClock').style.display=SCR==='home'||SCR==='house'||SCR==='town'?'':'none';showLesson()}
-function go(s){if(KIT.pg&&s!=='kit')kitPageEnd();nbClose();FROM=SCR;songStop();if(FROM==='town')LS.set('town',TOWN);if(MOVE)setMove(false);if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;ST.pendH=0;SCR=s;closeDlg();showScr();updBadge();if(s!=='title')LS.set('where',{s:s==='house'||s==='town'?s:'home',walk:s==='town'?ST.walk:0});
+function showScr(){const m={lobbyUI:isRoomScr(SCR),classUI:SCR==='class',craftUI:SCR==='craft',stageUI:(SCR==='level'||SCR==='town')&&!ST.play,playUI:SCR==='level'&&ST.play,boxUI:SCR==='box',kitUI:SCR==='kit',lvlBar:SCR==='level'&&!ST.play};for(const k in m)$('#'+k).classList.toggle('on',m[k]);$('#top').style.display=SCR==='title'?'none':'flex';$('#bUndo').style.display=SCR==='craft'||SCR==='kit'?'':'none';$('#bHome').style.visibility=SCR==='home'?'hidden':'';$('#bBox').style.display=SCR==='box'||(SCR==='level'&&ST.play)?'none':'';$('#ttl').textContent={home:'Shoebox Studio',craft:'School Desk',level:'Make a Level',town:'Little Town',house:'My House',box:'Toy Box',class:'Art Class',kit:'Pixel UI Kit',title:''}[SCR];$('#bClock').style.display=isRoomScr(SCR)||SCR==='town'?'':'none';showLesson()}
+function go(s){if(KIT.pg&&s!=='kit')kitPageEnd();nbClose();FROM=SCR;songStop();if(FROM==='town')LS.set('town',TOWN);if(MOVE)setMove(false);if(SCR==='craft')saveDesk();if(SCR==='kit')kitDraft(true);ST.play=false;ST.pendH=0;SCR=s;closeDlg();showScr();updBadge();if(s!=='title')LS.set('where',{s:s==='house'||s==='town'||s==='shop'?s:'home',walk:s==='town'?ST.walk:0,shop:s==='shop'?SHOP_ID:undefined});
   if(s==='craft'){renderTabs();fitDesk(!craftSeen);if(!craftSeen&&!C.pieces.length&&!(LS.get('desk',{}).pieces||[]).length&&!LES)setTimeout(()=>{if(SCR==='craft'&&!C.pieces.length)placePaper(PAPERS[0])},350);craftSeen=true}
-  else if(s==='level'||s==='town')enterStage(s);else if(s==='box')renderBox();else if(s==='kit')renderKit();else if(s==='class')renderClass();else if(s==='home'||s==='house'){RM=s==='house'?HOUSE:LOB;if(!RESUMING){if(s==='house')HOUSE.hero={x:460,y:262};else if(FROM==='town'){const d=STATIONS.find(t=>t.id==='door');LOB.hero=standPt(d)}}PET.ok=false;RM.tgt=null;RM.pend=null;RM.near=undefined;lobZoom();lobCam(true)}}
-function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['house','🛋️','My House','A cozy room in Little Town, with a game console'],['shelf','📚','Bookshelf','Story Shelf: plan stories, worlds and characters'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat'],['artswap','🖼️','Art Swap','Replace the default art with your own']];/* T022 */
-  dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else if(b.dataset.q==='artswap')artSwapOpen();else if(b.dataset.q==='shelf')openTool('shelf');else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
+  else if(s==='level'||s==='town')enterStage(s);else if(s==='box')renderBox();else if(s==='kit')renderKit();else if(s==='class')renderClass();else if(isRoomScr(s)){RM=s==='house'?HOUSE:s==='shop'?shopRoom():LOB;if(!RESUMING){if(s==='house')HOUSE.hero={x:460,y:262};else if(s==='shop'){const d=RM.stn.find(t=>t.out);RM.hero=standPt(d)}else if(FROM==='town'){const d=STATIONS.find(t=>t.id==='door');LOB.hero=standPt(d)}}PET.ok=false;RM.tgt=null;RM.pend=null;RM.near=undefined;lobZoom();lobCam(true)}}
+function quickMenu(){const items=[['craft','✂️','School Desk','Craft with paper, scissors, folding and glue'],['class','📘','Art Class','Step by step lessons'],['level','🚩','Make a Level','Place your pieces, then play'],['town','🏡','Little Town','Build on the tabletop and walk around'],['house','🛋️','My House','A cozy room in Little Town, with a game console'],['shelf','📚','Bookshelf','Story Shelf: plan stories, worlds and characters'],['shop','🛒','Supply Store','Its own store in Little Town (T032)'],['box','🧸','Toy Box','Asset Library: '+LIB.length+' saved, search, export and import'],['kit','👾','Pixel UI Kit','Pixel health bars, item slots, frames and nameplates'],['pet',PETS[PET.kind][0],'Companion','Pick who follows you: dog, chicken or cat'],['artswap','🖼️','Art Swap','Replace the default art with your own']];/* T022 */
+  dlg('<h2>Quick jump</h2>'+items.map(i=>'<button class="les" data-q="'+i[0]+'" style="margin-top:8px"><span>'+i[1]+' '+i[2]+'<small>'+i[3]+'</small></span><i>▶</i></button>').join('')+'<div class="btns"><button class="alt" id="dNo">Stay in the loft</button></div>',d=>{d.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{SFX.tick();if(b.dataset.q==='pet')petMenu();else if(b.dataset.q==='artswap')artSwapOpen();else if(b.dataset.q==='shelf')openTool('shelf');else if(b.dataset.q==='shop'){SHOP_ID='supply';go('shop')}else go(b.dataset.q)});d.querySelector('#dNo').onclick=closeDlg})}
 $('#ovlBack').onclick=()=>closeTool();
-$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lob3d').onclick=()=>{auInit();SFX.tick();if(MOVE)setMove(false);open3D(SCR==='house'?'house':'home')};$('#lobMove').onclick=()=>{auInit();SFX.tick();setMove(!MOVE)};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
+$('#lobQuick').onclick=()=>{auInit();SFX.tick();quickMenu()};$('#lob3d').onclick=()=>{auInit();SFX.tick();if(MOVE)setMove(false);open3D(SCR==='house'?'house':SCR==='shop'?'shop':'home')};$('#lobMove').onclick=()=>{auInit();SFX.tick();setMove(!MOVE)};$('#lobGo').onclick=()=>{auInit();if(RM.near)enterStn(RM.near)};
 $('#bHome').onclick=()=>{auInit();SFX.tick();go('home')};$('#bBox').onclick=()=>{auInit();SFX.tick();go('box')};$('#bUndo').onclick=()=>{auInit();if(SCR==='kit')kitUndo();else undo()};
 /* ---- stage UI ---- */
 function buildStageUI(){const tray=$('#tray');tray.innerHTML='';tray.style.display=ST.walk?'none':'';$('#layW').classList.toggle('on',ST.layer!=='hud');$('#layH').classList.toggle('on',ST.layer==='hud');if(ST.kind==='level'&&ST.layer==='hud'){buildHudUI();return}if(!TOYS.length)tray.innerHTML='<div id="trayEmpty">Your toy box is empty. Make something in Craft first!</div>';
@@ -1404,7 +1468,7 @@ function saveLevelAsset(){const n=LIB.filter(a=>a.type==='level').length+1;dlg('
   d.querySelector('#dYes').onclick=()=>{const a={id:newAid(),type:'level',name:(d.querySelector('#an').value||'My level '+n).trim().slice(0,24)||'My level',tags:parseTags(d.querySelector('#atg').value),date:Date.now(),data:lvlClean(JSON.parse(JSON.stringify(LVL)))};try{a.thumb=lvlThumbURL(LVL)}catch(e){}LIB.push(a);if(!saveLib()){LIB.pop();toast('Storage is full. Remove something first.');return}closeDlg();SFX.thud();updBadge();toast(a.name+' is in the Toy Box')}})}
 /* ---- touch / pen / mouse on the canvas ---- */
 const PT=new Map();let pinch=null,plock=false;
-const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:(SCR==='home'||SCR==='house')?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>{if(FS.can&&LS.get('fs',0)&&!FS.on())FS.enter();resume()},p:NOP}:null;
+const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:isRoomScr(SCR)?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>{if(FS.can&&LS.get('fs',0)&&!FS.on())FS.enter();resume()},p:NOP}:null;
 cv.addEventListener('pointerdown',e=>{auInit();const h=handler();if(!h)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(PT.size===1&&!plock)h.d(e);else if(PT.size===2){h.u(e,true);plock=true;const[a,b]=[...PT.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,d:1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2}}});
 cv.addEventListener('pointermove',e=>{const h=handler();if(!h||!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1474,7 +1538,7 @@ function glow(x,y,rad,k){const gr=g.createRadialGradient(x,y,0,x,y,rad);gr.addCo
 function townNight(){const t=nightK(),tc=tintRGBA(),on=t>.35,k=Math.min(1,DT*1.6);if(tc){g.fillStyle=tc;g.fillRect(ST.cam.x-30,ST.cam.y-30,W/ST.z+60,H/ST.z+60)}
   BLDL+=((on?1:0)-BLDL)*k;g.save();g.globalCompositeOperation='lighter';
   for(const it of TOWN.items){if(it.act!=='light')continue;const l=(LITE.get(it)||0)+((on?1:0)-(LITE.get(it)||0))*k;LITE.set(it,l);if(l<.02)continue;const r=itemRect(it);if(!r)continue;const ly=r.y+r.h*.12,rad=Math.max(70,r.w*1.8)*(.95+.05*Math.sin(NOW/310+it.x));glow(it.x,ly,rad,l);g.fillStyle='rgba(255,246,210,'+(.9*l).toFixed(3)+')';g.beginPath();g.arc(it.x,ly,Math.max(4,r.w*.12),0,TAU);g.fill()}
-  if(BLDL>.02){const hp=TOWN.house,sp=TOWN.studio;[[hp.x-35,hp.y-48],[hp.x+27,hp.y-40],[sp.x-61,sp.y-75],[sp.x+61,sp.y-75]].forEach(p=>glow(p[0],p[1],48,BLDL*.85))}
+  if(BLDL>.02){const hp=TOWN.house,sp=TOWN.studio;[[hp.x-35,hp.y-48],[hp.x+27,hp.y-40],[sp.x-61,sp.y-75],[sp.x+61,sp.y-75]].forEach(p=>glow(p[0],p[1],48,BLDL*.85));if(TOWN.supply){const q=TOWN.supply;glow(q.x-33,q.y-50,52,BLDL*.85)}}
   g.restore()}
 function drawWinSky(x,y,r){const t=nightK();if(t>.55){g.fillStyle='rgba(243,239,216,'+Math.min(1,(t-.55)*3)+')';g.beginPath();g.arc(x+r*.35,y-r*.3,r*.2,0,TAU);g.fill();g.fillStyle='rgba(255,255,255,.8)';[[-.4,-.2],[-.1,.35],[.45,.3]].forEach(s=>g.fillRect(x+s[0]*r,y+s[1]*r,2,2))}}
 
@@ -1505,7 +1569,7 @@ function mkShowTown(){const items=[],put=(k,x,y,o)=>{const t=toyById('show_'+k);
   [[420,560],[1180,560],[420,1062],[1180,1062]].forEach(p=>put('lamp',p[0],p[1]));
   put('car1',500,632);put('car2',1100,932,{flip:-1});/* 12 = CARY: a car's wheels sit 12 px below the middle of the road */
   return{items,hero:{x:780,y:545},house:{x:930,y:500},studio:{x:600,y:470},show:1}}
-function resetShowTown(){ask('Reset to showcase town?','Little Town goes back to the showcase town: a road loop with two cars, street lights, a park and a sign. Your town now is kept as a backup. Your toy box stays as it is.','Reset town',()=>{ensureShowToys();LS.set('town_backup',{date:Date.now(),town:TOWN});const T=mkShowTown();TOWN=T;ST.d=T;VEH.clear();ST.sel=null;ST.arm=null;LS.set('town',TOWN);libSync();buildStageUI();ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.42/ST.z;clampCam();SFX.win();toast('Showcase town is back. Your old town is saved as a backup.')})}
+function resetShowTown(){ask('Reset to showcase town?','Little Town goes back to the showcase town: a road loop with two cars, street lights, a park and a sign. Your town now is kept as a backup. Your toy box stays as it is.','Reset town',()=>{ensureShowToys();LS.set('town_backup',{date:Date.now(),town:TOWN});const T=mkShowTown();ensureBlds(T);TOWN=T;ST.d=T;VEH.clear();ST.sel=null;ST.arm=null;LS.set('town',TOWN);libSync();buildStageUI();ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.42/ST.z;clampCam();SFX.win();toast('Showcase town is back. Your old town is saved as a backup.')})}
 
 /* ---- Flip paper: every sheet has a front and a back. p.art = the side you see, p.back = the other side, p.side = 'front' or 'back'.
    Both sides are stored in the side's own view (so the back's shape is the mirror of the front's). Turning over swaps them with a card-flip.
@@ -1726,7 +1790,7 @@ function levelMusicDlg(){const L=musicList(),cur=LVL.music&&LVL.music.aid;dlg('<
 function updMusBtn(){const b=$('#sMus');if(b)b.classList.toggle('alt',!LVL.music)}
 /* ---- main loop ---- */
 function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;clkTick(DT);if(OVL){requestAnimationFrame(frame);return}g.setTransform(DPR,0,0,DPR,0,0);
-  if(SCR==='title')drawHome();else if(SCR==='home'||SCR==='house'){updLobby();if(SCR==='home'||SCR==='house')drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
+  if(SCR==='title')drawHome();else if(isRoomScr(SCR)){updLobby();if(isRoomScr(SCR))drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
   auTick();requestAnimationFrame(frame)}
 addEventListener('pagehide',()=>{clkSave();if(SCR==='town')LS.set('town',TOWN)});
 resize();loadDesk();libInit();SCR='title';showScr();updBadge();requestAnimationFrame(frame);
@@ -1993,13 +2057,15 @@ function asBox(id,fn){return AS.box[id]||(AS.box[id]=asMeasure(fn))}
 const _asDrawToy=drawToy;
 drawToy=function(c,toy,t,swing){if(toy&&typeof toy.id==='string'&&(toy.id.startsWith('starter_')||toy.id.startsWith('show_'))){const sw=asGet(toy.id);if(sw&&sprite(sw).ready){const sc=Math.min(toy.w/sw.w,toy.h/sw.h);c.save();c.translate((toy.w-sw.w*sc)/2,toy.road?(toy.h-sw.h*sc)/2:toy.h-sw.h*sc);c.scale(sc,sc);_asDrawToy(c,sw,t,swing);c.restore();return true}}return _asDrawToy(c,toy,t,swing)};
 const AS_STN={};Object.keys(STATION_DRAW).forEach(k=>{const o=AS_STN[k]=STATION_DRAW[k];STATION_DRAW[k]=function(c){const id='stn_'+k;if(asGet(id)&&asReady(id)){const b=asBox(id,o);c.save();c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(b.x+b.w/2,3,b.w*.45,9,0,0,TAU);c.fill();c.restore();asFit(id,c,b.x,b.y,b.w,b.h);return}o(c)}});
-const _asTS=drawTownStudio,_asTH=drawTownHouse;
+const _asTS=drawTownStudio,_asTH=drawTownHouse,_asTSu=drawTownSupply;
 function asBld(id,o,c,p,tag){if(!asReady(id))return false;const b=asBox(id,x=>o(x,{x:0,y:0},''));c.save();c.translate(p.x,p.y);c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,2,b.w*.45,14,0,0,TAU);c.fill();asFit(id,c,b.x,b.y,b.w,b.h);if(tag){c.font='800 12px system-ui';c.textAlign='center';c.fillStyle='rgba(0,0,0,.55)';c.fillText(tag,0,22)}c.restore();return true}
 drawTownStudio=function(c,p,tag){if(!asBld('bld_studio',_asTS,c,p,tag))_asTS(c,p,tag)};
 drawTownHouse=function(c,p,tag){if(!asBld('bld_house',_asTH,c,p,tag))_asTH(c,p,tag)};
+drawTownSupply=function(c,p,tag){if(!asBld('bld_supply',_asTSu,c,p,tag))_asTSu(c,p,tag)};/* T032 */
 const _asLB=LOB.bg,_asHB=HOUSE.bg;
 LOB.bg=function(){if(asReady('room_lobby')){g.fillStyle='#3e2a1e';g.fillRect(-600,-900,LOB.W+1200,LOB.H+1300);asCover('room_lobby',g,0,0,LOB.W,LOB.H)}else _asLB()};
 HOUSE.bg=function(){if(asReady('room_house')){g.fillStyle='#4a3324';g.fillRect(-600,-900,HOUSE.W+1200,HOUSE.H+1300);asCover('room_house',g,0,0,HOUSE.W,HOUSE.H)}else _asHB()};
+for(const k in SHOPS){const R=SHOPS[k].room,o=R.bg,id='room_shop_'+k;R.bg=function(){if(asReady(id)){g.fillStyle='#3e2a1e';g.fillRect(-600,-900,R.W+1200,R.H+1300);asCover(id,g,0,0,R.W,R.H)}else o()}}/* T032 */
 const _asHero=drawHero;drawHero=function(c,x,y,face,ph,air){if(!asReady('char_hero'))return _asHero(c,x,y,face,ph,air);const b=asBox('char_hero',q=>_asHero(q,0,0,1,0,false));c.save();c.translate(x,y);c.scale(face,1);c.rotate(Math.sin(ph||0)*(air?.03:.09));asFit('char_hero',c,b.x,b.y,b.w,b.h);c.restore()};
 const _asPet=drawPet;drawPet=function(c,x,y){const k=PET.kind,id='char_'+k;if(k==='none'||!PET.ok||!asReady(id))return _asPet(c,x,y);const b=asBox(id,q=>asPetAs(k,()=>_asPet(q,0,0)));c.save();c.translate(x,y);c.scale(PET.face,1);c.rotate(Math.sin(PET.ph||0)*.09);asFit(id,c,b.x,b.y,b.w,b.h);c.restore()};
 function asPetAs(k,fn){const o={kind:PET.kind,ok:PET.ok,face:PET.face,ph:PET.ph};PET.kind=k;PET.ok=true;PET.face=1;PET.ph=0;try{fn()}finally{Object.assign(PET,o)}}
@@ -2018,11 +2084,12 @@ function asSlots(){if(ART_SLOTS)return ART_SLOTS;const L=[],add=o=>L.push(o);
   mkStarters().forEach(t=>{const tt=toyById(t.id)||t;add({id:t.id,name:t.name,group:'Starter pieces',kind:'toy',toy:tt,w:t.w,h:t.h,where:'Starter piece in the Toy Box, levels and Little Town',draw:toyDraw(tt)})});
   mkShowToys().forEach(t=>{const tt=toyById(t.id)||t;add({id:t.id,name:t.name,group:'Showcase town',kind:'toy',toy:tt,w:t.w,h:t.h,where:'The showcase town in Little Town',draw:toyDraw(tt)})});
   const stn=(list,grp,where)=>list.forEach(s=>{const id='stn_'+s.id;if(L.some(x=>x.id===id)||!AS_STN[s.id])return;const b=asBox(id,AS_STN[s.id]);add({id,name:s.name,group:grp,kind:'station',w:b.w,h:b.h,where,draw:(c,w,h)=>{c.save();c.scale(w/b.w,h/b.h);c.translate(-b.x,-b.y);STATION_DRAW[s.id](c);c.restore()}})});
-  stn(STATIONS,'Studio stations','The studio, and the studio in Retro 3D');stn(HOUSE.stn,'House stations','My House, and the house in Retro 3D');
-  [['bld_studio','Shoebox Studio building',_asTS,drawTownStudio],['bld_house','My House building',_asTH,drawTownHouse]].forEach(([id,name,o,cur])=>{const b=asBox(id,x=>o(x,{x:0,y:0},''));add({id,name,group:'Buildings in town',kind:'building',w:b.w,h:b.h,where:'Little Town, 2D and Retro 3D',draw:(c,w,h)=>{c.save();c.scale(w/b.w,h/b.h);c.translate(-b.x,-b.y);cur(c,{x:0,y:0},'');c.restore()}})});
+  stn(STATIONS,'Studio stations','The studio, and the studio in Retro 3D');stn(HOUSE.stn,'House stations','My House, and the house in Retro 3D');for(const k in SHOPS)stn(SHOPS[k].room.stn,SHOPS[k].name+' stations','Inside the '+SHOPS[k].name+', and in Retro 3D');/* T032 */
+  [['bld_studio','Shoebox Studio building',_asTS,drawTownStudio],['bld_house','My House building',_asTH,drawTownHouse],['bld_supply','Supply Store building',_asTSu,drawTownSupply]].forEach(([id,name,o,cur])=>{const b=asBox(id,x=>o(x,{x:0,y:0},''));add({id,name,group:'Buildings in town',kind:'building',w:b.w,h:b.h,where:'Little Town, 2D and Retro 3D',draw:(c,w,h)=>{c.save();c.scale(w/b.w,h/b.h);c.translate(-b.x,-b.y);cur(c,{x:0,y:0},'');c.restore()}})});
   const wood=(c,w,h,dim)=>{c.fillStyle=c.createPattern(WOOD,'repeat');c.fillRect(0,0,w,h);if(dim){c.fillStyle='rgba(60,35,15,'+dim+')';c.fillRect(0,0,w,h)}};
   add({id:'room_lobby',name:'Studio room',group:'Rooms and backgrounds',kind:'room',w:LOB.W,h:LOB.H,where:'The studio walls and floor (2D and 3D)',draw:(c,w,h)=>asSnap(()=>{const R0=RM;RM=LOB;LOB.bg();RM=R0},LOB.W,LOB.H,c,w,h)});
   add({id:'room_house',name:'House room',group:'Rooms and backgrounds',kind:'room',w:HOUSE.W,h:HOUSE.H,where:'Inside My House (2D and 3D)',draw:(c,w,h)=>asSnap(()=>{const R0=RM;RM=HOUSE;HOUSE.bg();RM=R0},HOUSE.W,HOUSE.H,c,w,h)});
+  for(const k in SHOPS){const R=SHOPS[k].room;add({id:'room_shop_'+k,name:SHOPS[k].name+' room',group:'Rooms and backgrounds',kind:'room',w:R.W,h:R.H,where:'Inside the '+SHOPS[k].name+' (2D and 3D)',draw:(c,w,h)=>asSnap(()=>{const R0=RM;RM=R;R.bg();RM=R0},R.W,R.H,c,w,h)})}/* T032 */
   add({id:'room_desk',name:'School Desk table',group:'Rooms and backgrounds',kind:'room',w:1320,h:1600,where:'The table top at the School Desk',draw:(c,w,h)=>{if(!asCover('room_desk',c,0,0,w,h))wood(c,w,h)}});
   add({id:'room_title',name:'Title screen',group:'Rooms and backgrounds',kind:'room',w:800,h:600,where:'Behind the SHOEBOX STUDIO title',draw:(c,w,h)=>{if(!asCover('room_title',c,0,0,w,h)){wood(c,w,h,.12);c.fillStyle='#fff';c.font='900 '+Math.round(h*.16)+'px ui-rounded,system-ui';c.textAlign='center';c.fillText('SHOEBOX',w/2,h*.42);c.fillText('STUDIO',w/2,h*.62)}}});
   add({id:'room_town',name:'Little Town table',group:'Rooms and backgrounds',kind:'room',w:1000,h:700,where:'The wooden table around Little Town',draw:(c,w,h)=>{if(!asCover('room_town',c,0,0,w,h))wood(c,w,h,.25)}});
