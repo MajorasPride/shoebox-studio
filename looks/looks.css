@@ -1,0 +1,84 @@
+/* Shoebox Studio — Looks pass CSS (looks test, Nov 13 2026). By MajorasPride.
+   Pixel UI in the Rise of the Polygons style: chunky pixel frames (9-slice, 12 px art drawn at 2x), notched corners,
+   the kraft and paper colours of the studio, and Jersey 10 (SIL OFL, picked over Pixelify Sans because its C and 5 read clearly at phone size) for titles and button words.
+   Only on when <body class="pxui">. The Real desk tray styles are always available. */
+@font-face{font-family:'Jersey 10';src:url(ui/jersey-10-latin-400-normal.woff2) format('woff2');font-weight:100 900;font-display:swap}
+:root{--px:'Jersey 10',ui-rounded,system-ui,sans-serif}
+body.pxui{font-variant-ligatures:none}
+
+/* ---------- Real desk tray ---------- */
+#chips.ldesk{min-height:0;padding:0;background:none;overflow:visible;display:block}
+#ldTray{display:flex;align-items:flex-end;gap:4px;overflow-x:auto;overflow-y:hidden;padding:10px 10px 6px;scrollbar-width:none;
+  background:linear-gradient(#0000 0,#0000 8px,#8a5b38 8px,#a36d44 30%,#8f5e3a 70%,#6f4529 100%);
+  box-shadow:inset 0 9px 0 -1px #0000, inset 0 10px 0 #b98457, 0 -2px 0 #0002;position:relative}
+#ldTray::-webkit-scrollbar{display:none}
+#ldTray::before{content:"";position:absolute;inset:8px 0 0;pointer-events:none;opacity:.35;
+  background:repeating-linear-gradient(90deg,#0000 0 37px,#5a361c33 37px 39px,#0000 39px 83px,#ffffff14 83px 84px)}
+.ldi{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;padding:0 3px;min-height:64px;position:relative;
+  transition:transform .14s ease-out,filter .14s}
+.ldi canvas{display:block;filter:drop-shadow(1px 2px 0 #0004) drop-shadow(0 3px 3px #0003);transition:filter .14s}
+.ldi small{font:400 14px/1 var(--px);color:#fff6dd;text-shadow:0 1px 0 #0008;white-space:nowrap;letter-spacing:.2px;opacity:.85}
+.ldi.on{transform:translateY(-7px) rotate(-2deg)}
+.ldi.on canvas{filter:drop-shadow(3px 9px 2px #0005) drop-shadow(0 0 5px #fff8)}
+.ldi.on small{color:#ffe17a;opacity:1}
+.ldi.open{transform:translateY(-4px)}
+.ldi:active{transform:translateY(-2px) scale(.96)}
+.ldi.rip::after{content:"";position:absolute;left:50%;top:44%;width:30px;height:12px;margin:-6px 0 0 -15px;border:2px solid #fff;border-radius:50%;animation:ldrip .7s ease-out forwards;pointer-events:none}
+@keyframes ldrip{from{transform:scale(.4);opacity:1}to{transform:scale(2.2);opacity:0}}
+.ldsep{flex:0 0 2px;align-self:stretch;margin:6px 4px;background:#0003;box-shadow:1px 0 0 #fff2}
+#ldTray .chip{height:46px;min-width:50px;font-size:18px;align-self:center}
+#ldDrawer{background:linear-gradient(#c79668,#b07e52);border-top:3px solid #6b4226;box-shadow:inset 0 2px 0 #e3b98a,0 -3px 8px #0003}
+#ldDrawerIn{display:flex;align-items:center;gap:2px;overflow-x:auto;padding:6px 8px;scrollbar-width:none}
+#ldDrawerIn::-webkit-scrollbar{display:none}
+#ldDrawerIn b{font:400 14px var(--px);color:#3b2412;writing-mode:vertical-rl;transform:rotate(180deg);margin-right:4px;flex:none}
+.ldc{flex:0 0 auto;padding:2px;border-radius:6px;transition:transform .12s}
+.ldc canvas{display:block;filter:drop-shadow(1px 2px 0 #0004)}
+.ldc.on{transform:translateY(-6px)}
+.ldc.on canvas{filter:drop-shadow(2px 7px 2px #0005)}
+.ldx{flex:none;width:40px;height:40px;margin-left:6px;font-size:16px;background:#fbf6ea;border-radius:8px;box-shadow:0 2px 0 #0004}
+.ldp{font-size:12.5px;margin:2px 0 8px;line-height:1.3}
+#ldPal{display:block;margin:0 auto;touch-action:none}
+#ldTubes{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:8px 0 2px}
+#ldTubes button{height:30px;border-radius:4px 4px 10px 10px;box-shadow:inset 0 -5px 0 #0002,0 2px 0 #0004;outline:2px solid #0002;outline-offset:-2px}
+#ldSet{margin:12px 0 0;padding-top:10px;border-top:2px dashed #0002}
+#ldSet h3{margin:0 0 4px;font:400 21px var(--px)}
+#ldSet label{display:block;font-size:12px;margin:8px 0 3px;opacity:.85}
+.seg3{display:flex;gap:4px}
+.seg3 button{flex:1;min-height:40px;border-radius:8px;background:#e9dfc6;font-size:13px;font-weight:800;box-shadow:0 2px 0 #0003}
+.seg3 button.on{background:var(--yellow)}
+
+/* ---------- Pixel UI (Rise of the Polygons style) ---------- */
+body.pxui .tb,body.pxui .chip,body.pxui #dlgIn .btns button,body.pxui .seg3 button,body.pxui .ldx,body.pxui #lobRow button,body.pxui #lobGo,
+body.pxui #ovlBack,body.pxui #projBack,body.pxui #vhsBack,body.pxui #stageBtns button,body.pxui #pStop{
+  border:4px solid transparent;border-radius:0;box-shadow:none;background:none;
+  border-image:url(ui/f_paper.png) 4 fill / 8px / 0 stretch;image-rendering:pixelated;font-family:var(--px);font-weight:400;letter-spacing:.3px}
+body.pxui .tb:active,body.pxui .chip:active,body.pxui #dlgIn .btns button:active,body.pxui .seg3 button:active,body.pxui #lobRow button:active{
+  border-image-source:url(ui/f_paper_dn.png);transform:translateY(1px)}
+body.pxui .chip.on,body.pxui .seg3 button.on{border-image-source:url(ui/f_yellow.png)}
+body.pxui .chip.sw{border-image-source:none;border:3px solid #2b1d16;box-shadow:inset -3px -3px 0 #0003,inset 3px 3px 0 #fff4}
+body.pxui .chip.sw.on{outline:none;border-color:#fff;box-shadow:0 0 0 3px #2b1d16,inset -3px -3px 0 #0003}
+body.pxui .chip small,body.pxui .tab small{font-family:var(--px);font-weight:400;letter-spacing:.4px;font-size:14px}
+body.pxui #dlgIn .btns button{border-image-source:url(ui/f_yellow.png);height:46px;border-radius:0;font-size:19px}
+body.pxui #dlgIn .btns button.alt{border-image-source:url(ui/f_kraft.png)}
+body.pxui #dlgIn .btns button.bad{border-image-source:url(ui/f_red.png);color:#fff}
+body.pxui #dlg{background:#1a110bb0}
+body.pxui #dlgIn{border-radius:0;border:6px solid transparent;border-image:url(ui/f_paper.png) 4 fill / 12px / 0 stretch;image-rendering:pixelated;
+  background:none;box-shadow:6px 8px 0 #0006;padding:14px 14px}
+body.pxui #dlgIn h2{font-family:var(--px);font-weight:400;letter-spacing:.5px;font-size:27px;line-height:1}
+body.pxui #tabs{background:#2b1d16;gap:3px;padding:4px 4px calc(4px + env(safe-area-inset-bottom));box-shadow:inset 0 3px 0 #4a3222}
+body.pxui .tab{border:4px solid transparent;border-image:url(ui/f_wood.png) 4 fill / 8px / 0 stretch;image-rendering:pixelated;border-radius:0;height:52px}
+body.pxui .tab.on{border-image-source:url(ui/f_kraft.png);color:#2b1d16;transform:translateY(-3px)}
+body.pxui .tab:active{border-image-source:url(ui/f_wood_dn.png)}
+body.pxui #chips{background:#3e2a1ef0;box-shadow:inset 0 3px 0 #2b1d16}
+body.pxui #chips.ldesk{background:none;box-shadow:none}
+body.pxui #hint{border-radius:0;border:3px solid transparent;border-image:url(ui/f_paper.png) 4 fill / 8px / 0 stretch;image-rendering:pixelated;background:none;font-family:var(--px);font-weight:400;font-size:16px;letter-spacing:.3px;box-shadow:none}
+body.pxui #toast{border-radius:0;border:4px solid transparent;border-image:url(ui/f_wood.png) 4 fill / 8px / 0 stretch;image-rendering:pixelated;background:none;font-family:var(--px);font-weight:400;font-size:17px;letter-spacing:.3px;color:#fff6dd}
+body.pxui #ttl{font-family:var(--px);font-weight:400;font-size:23px;letter-spacing:.8px;text-shadow:2px 2px 0 #2b1d16}
+body.pxui .tb b{border-radius:0;box-shadow:1px 1px 0 #2b1d16}
+body.pxui #lobGo{border-image-source:url(ui/f_yellow.png)}
+body.pxui .card b{font-family:var(--px);font-weight:400;font-size:23px;letter-spacing:.4px}
+body.pxui #ldDrawer{border-top:4px solid #2b1d16}
+body.pxui .ldx{border-image-source:url(ui/f_kraft.png)}
+body.pxui #ldTubes button{border-radius:0;box-shadow:inset -3px -4px 0 #0003,inset 3px 3px 0 #fff4,0 0 0 2px #2b1d16;outline:none}
+body.pxui .seg3 button{font-size:17px}
+body.pxui #lobRow button,body.pxui #lobGo{font-size:18px}

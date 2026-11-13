@@ -162,3 +162,17 @@ All of this is in `index.html`. Search for the comment titles below.
 - More Story Shelf tutorials and worked examples.
 - The other "coming soon" stations: Fridge Gallery, Supply Shop, Dress-up Mirror, Art Studio, Cork Board.
 - Recommendation: let buildings in Little Town hold levels (the "buildings are level doors" idea). The house code is a ready pattern for it.
+
+## Looks pass (looks test, Nov 13 2026, Opus) — dev only, NOT live
+Branch `looks-test` (made on top of GitHub dev at T020, e7e455c). It only ADDS files plus 2 lines in index.html, so it applies cleanly on top of the T020–T033 dev bundle too.
+- `looks/looks.js` (loaded after the main script; wraps medSeg, medSample, medNote, stockTex, renderChips, drawCraft, spawnBits, afterPlacePaper and the Settings button — no old code changed):
+  - Paint blends: spectral.js (MIT) Kubelka-Munk mixing. Poster paint, oil pastels, crayons, coloured pencils and chalk mix with the colour under the tip; watercolour and markers glaze (multiply). Wet paint (last 25 s) mixes more; brushes pick up wet paint and get dirty until you rinse in the water cup or reload from the palette. Blending stump smudges.
+  - New mediums: Clay (rolled coil, Blender clay texture) and Yarn (twisted 3-ply strand, Blender tile), plus Blending stump. New papers: Felt, Knitted fabric, Clay slab.
+  - Real desk: a wooden tray of real supplies replaces the Draw chips (pencil, crayon box, pencil cup, markers, mixing palette, watercolour brush, paint brush, palette knife, water cup, yarn, clay, blending stump, eraser, art tin = the old Art box). Crayons, coloured pencils, markers, yarn and clay open a drawer: every colour is its own crayon/pencil/marker/ball/lump. Rulers, stencils, compass and Flip stay as chips at the end. Settings > Looks > Desk: Quick tools brings back the old bottom toolbar.
+  - Mixing palette: 6 wells (fill from 12 paints), palette knife dabs into the dish, drag to stir, Use this colour; new mixed colours are added to every drawer (up to 6).
+  - Craft effects: paint splats, glitter sparkles, extra paper scraps when cutting, clay squish ring at the end of a clay stroke, water ripple, small sounds. Settings toggle.
+  - Settings > Looks (test): Desk (Real/Quick), Desk art (Real/Toon/Pixel style kits), Menus (Pixel UI/Classic), Paint blending on/off, Craft effects on/off. Saved as craftloft_looks.
+- `looks/looks.css`: Pixel UI in the Rise of the Polygons style (9-slice pixel frames, notched corners, kraft palette, Jersey 10 font) on body.pxui, plus the tray, drawer and palette styles.
+- `looks/assets/`: Blender renders (real = Cycles lamp light, toon = flat + outline, pixel = toon shrunk and pixel-snapped), tint masks, texture tiles, atlas.json. Remake with `tools/blender/` (pip install bpy): `python3 desk_props.py`, `STYLE=toon python3 desk_props.py`, `python3 pixelize.py`, `python3 prep_assets.py`.
+- Tested at S23 Ultra size (384x824) and 1280x800: drawing in every new medium, blending, drawers, palette mixing, rinse, three art styles, Quick tools, the new papers, and home, town, house, shop, toy box, Pixel UI Kit, level, Art Class and title screens: no page errors.
+- Not done yet / ideas: Art Swap slots for the new desk supplies; clay and yarn looks in Retro 3D (Puff could use the clay tile); three.quarks for 3D effects; S Pen pressure (perfect-freehand) still to add.
