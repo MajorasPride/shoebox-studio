@@ -43,6 +43,8 @@ _Last updated: Nov 13, 2026 (v1.5.1, live)_
 ## Art direction (owner, Nov 12, 2026: standing rule)
 - Shoebox Studio is **one mixed-media piece**: clay, yarn, paper, cardboard, glow-in-the-dark and glitter sit together with real-art, diorama and book-nook realism, a little cartoon. Original art only (pictures he shared of yarn/paper/clay games and book nooks are for feel, never copied).
 - Long-term roadmap (also in the Plan & Results doc): v1.6 default starter town where things behave like what they are (car drives, streetlight lights up, day and night); assets in every medium; picture stickers (import photos as stickers several ways, realistic photo stickers, GIF stickers later); his own art later.
+- **The Player Hand** (idea, Nov 12): it's all about imagination, we're just kids playing. Later the toys you make come alive, and the player is a giant hand from above (original design, inspired by the hand in Smash) that picks up and plays with them.
+- **Platform fighter maker** (later): build your own Smash-style party fighting game inside Shoebox Studio, with your own toys as fighters. Original characters only.
 
 ## What v1.4 added (built Nov 13, 2026, live)
 1. **Bookshelf station in the studio lobby.** Label "Bookshelf", subtitle "Story Shelf". Walk up and tap it (or use the yellow button, or Quick jump) and Story Shelf opens. The shelf has two dotted empty gaps, kept on purpose for **book nooks**.
