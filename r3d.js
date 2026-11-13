@@ -54,7 +54,7 @@ async function pieceMesh(toy, style, opt = {}) {
     const m = mat(); mats.push(m); grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), m));
     if (!opt.noFoot) { const foot = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w * .5, 70), 5, 18), lam({ color: 0xb48a58 })); foot.position.set(0, 2.5, -9); grp.add(foot); }
   }
-  grp.userData.mats = mats; grp.userData.glow = glow; grp.userData.toy = toy;
+  grp.userData.mats = mats; grp.userData.glow = glow; grp.userData.toy = toy; grp.userData.style = style;
   if (toy.med && toy.med.gl) grp.add(sparkles(w, h, style === 'flat' ? 0 : 1));
   return grp;
 }
@@ -186,7 +186,7 @@ async function goScene(where, at) {
   R.busy = true; const f = document.getElementById('r3fade'); f.classList.add('on');
   if (R.S) disposeScene(R.S.sc);
   R.S = where === 'town' ? await buildTown() : await buildRoom(where === 'house' ? HOUSE : LOB);
-  if (where === 'town') { const h = at || TOWN.hero; R.pos = { x: h.x, z: h.y }; R.yaw = at && at.yaw != null ? at.yaw : 0; }
+  if (where === 'town') { const h = at || TOWN.hero; R.pos = { x: h.x, z: h.y }; /* face the middle of town, so the first look is the town and not a wall */ R.yaw = at && at.yaw != null ? at.yaw : Math.atan2(-(TW.W / 2 - h.x), -(TW.H * .55 - h.y)); }
   else { const R0 = R.S.R; /* start in the open middle of the floor (or further back if that is where you stood), looking at the back wall */ const h = R0.hero || { x: R0.W / 2, y: 0 }, open = R.S.bounds.z0 + (R.S.bounds.z1 - R.S.bounds.z0) * .5; R.pos = { x: Math.max(R.S.bounds.x0 + 30, Math.min(R.S.bounds.x1 - 30, h.x)), z: Math.max(open, h.y) }; R.yaw = 0; }
   R.pitch = -.08; setTitle(); LS.set('where', { s: where === 'town' ? 'town' : where, walk: 1 });
   requestAnimationFrame(() => { f.classList.remove('on'); R.busy = false; });
@@ -245,6 +245,7 @@ function loop(ts) {
   for (const r of S.items) {
     r.g.position.set(r.it.x, 0, r.it.y); r.blob.position.set(r.it.x, .7, r.it.y); const s = r.it.s || 1; r.g.scale.x = s * (r.it.flip < 0 ? -1 : 1);
     if (r.door) r.g.rotation.y = r.it.open ? -1.25 : 0;
+    else if (r.g.userData.style === 'flat') r.g.rotation.y = Math.atan2(p.x - r.it.x, p.z - r.it.y); /* flat cutouts turn to face you, like sprites in old 3D games */
     if (r.light) { r.light.material.opacity = Math.min(1, k * 1.3) * (.85 + .15 * Math.sin(R.t * 3 + r.it.x)); }
     if (r.g.userData.glow) r.g.userData.mats.forEach(m => { m.emissiveIntensity = k * 1.1; });
   }
