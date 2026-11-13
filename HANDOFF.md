@@ -15,22 +15,23 @@ _Last updated: Nov 12, 2026_
 - Repo: https://github.com/MajorasPride/shoebox-studio
 - Original v1 artifact (Craft Loft): https://claude.ai/artifact/AnfU7AN5iGdXarANhJpL5z. This repo's `index.html` is now the main copy.
 
-## Decisions (Nov 12, 2026)
-- Beat Bop Doodle becomes **"a Shoebox Studio game"**:
-  - It keeps its own repo and site (`beat-bop-doodle`), so it can be updated and pushed by itself.
-  - Its title screen gets a small "a Shoebox Studio game" line, and its site gets a link back to Shoebox Studio. Approved, not yet built.
-  - It shows up as a **retro NES-style console in the player's house** in Little Town, not in the studio lobby.
-  - The console loads the **live** Beat Bop Doodle site, so updates show up automatically. When offline, it shows a "no signal" TV screen with no backup copy.
-- **Story Loom** joins too, as a **bookshelf station in the studio lobby** that opens the story editor. Later, book nooks can live on the same shelf. Same setup as Beat Bop Doodle: it stays a real standalone copy that the owner edits with Claude, and the desk loads the live version.
-  - Story Loom is a private claude.ai artifact right now (https://claude.ai/artifact/PsTZ7n8XEwmmE1uL6UWTS4), so it needs its own public repo (`story-loom`) before the desk can load it.
-  - Its "Ask Claude" button only works on claude.ai, so it won't work on the public copy.
+## How the built-in tools work (decided Nov 12, 2026, replaces the earlier "load the live site" plan)
+- **Working copies** are where small updates happen with Claude:
+  - Story Loom: the private Claude artifact (https://claude.ai/artifact/PsTZ7n8XEwmmE1uL6UWTS4).
+  - Beat Bop Doodle: its own repo (`beat-bop-doodle`).
+- **Shoebox Studio keeps its own copy** of each tool inside this repo (planned folders: `/story-loom/`, `/beat-bop-doodle/`). These copies only change when the owner says to **push a big update** into the game. The game is not updated all the time.
+- No separate public websites are needed for these tools. There is no story-loom repo, and the game copies work offline.
+- Story Loom's in-game copy is the public edition: no Ask Claude buttons, no cloud save. It's prepared but not yet added. Name for the in-game copy is still open (Story Shelf was suggested).
+- Story Loom opens from a **bookshelf in the studio lobby**. Later, book nooks can live on the same shelf.
+- Beat Bop Doodle opens from a **retro NES-style console in the player's house**. Its "a Shoebox Studio game" title line is approved.
 - Book nooks: a later feature (tiny dioramas you make and slide between books).
 
 ## Open questions (answer on a cheaper model)
+- Keep Beat Bop Doodle's existing public site, or turn it off?
 - **The house:** what it's for, what's inside, and how it connects to Little Town and the lobby. Talk this through before building the console.
 
 ## Build list (go through with the owner before pushing)
 1. Done: rename + tagline, pushed to the public repo.
-2. Beat Bop Doodle: "a Shoebox Studio game" line + link back.
-3. Story Loom: own public repo/site, then the bookshelf station in the studio lobby.
-4. House in Little Town, with the NES-style console loading Beat Bop Doodle.
+2. Add the Story Loom public edition into `/story-loom/` + the studio bookshelf station that opens it.
+3. Add Beat Bop Doodle into `/beat-bop-doodle/` + the "a Shoebox Studio game" line.
+4. House in Little Town, with the NES-style console that opens Beat Bop Doodle.
