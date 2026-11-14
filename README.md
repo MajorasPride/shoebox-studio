@@ -20,4 +20,7 @@ Formerly called Craft Loft. Saves made under that name still load.
 
 
 ## Credits
-See [CREDITS.md](CREDITS.md). Retro 3D uses three.js (MIT).
+See [CREDITS.md](CREDITS.md). Retro 3D uses three.js (MIT). Paint mixing uses spectral.js (MIT) and pen strokes use perfect-freehand (MIT).
+
+## Code
+No build step. `index.html` loads `core.js`, `mediums.js`, `desk.js`, `classes.js`, `town.js` and `stations.js` in that order; `r3d.js` loads when 3D opens. See [HANDOFF.md](HANDOFF.md).

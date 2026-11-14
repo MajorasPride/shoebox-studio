@@ -144,6 +144,10 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .tog.on::after{left:29px}
 .hsw{width:34px;height:34px;border-radius:50%;border:3px solid transparent}
 .hsw.on{border-color:var(--ink)}
+/* T024: two-way picker (Settings > Drawing tools, palette paint) */
+.pseg{display:flex;gap:6px;flex-wrap:wrap}
+.pseg button{padding:8px 12px;border-radius:12px;background:#e9dfc6;color:var(--ink);font-weight:800;font-size:13.5px;border:3px solid transparent}
+.pseg button.on{background:#fff;border-color:var(--ink)}
 #toast{position:fixed;left:50%;top:58px;transform:translateX(-50%);background:#3b2f2aee;color:#fff;padding:8px 14px;border-radius:16px;font-size:13.5px;font-weight:800;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 /* asset library (inside the toy box) */
@@ -283,6 +287,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <div id="vhs"><canvas id="vhsCv"></canvas><div id="vhsBar"><button id="vhsBack">◀ Back to the studio</button><div id="vhsTtl"></div></div><div id="vhsCtl"><button id="vhsRew">⏪ Rewind</button><button id="vhsPlay">⏸ Pause</button><button id="vhsEj">⏏ Eject</button></div></div>
 <div id="dlg"><div id="dlgIn"></div></div>
 <div id="toast"></div>
+<script src="lib/spectral.js" async></script>
+<script src="lib/perfect-freehand.js" async></script>
 <script src="core.js"></script>
 <script src="mediums.js"></script>
 <script src="desk.js"></script>

@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033) and Creator Mode (T034) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033), Creator Mode (T034) and the Medium engine with the file split (T024) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -28,6 +28,55 @@ _Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture exam
 - Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
 - Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
+
+## Medium engine, real desk and the file split (built Nov 13, 2026 by Fable, ticket T024; on `dev` only, not live)
+Three things in one order: the game is split into files, every art medium is a recipe with paint that really mixes, and the School Desk has real supplies and a painting kit.
+
+### The files (read this first: the code is no longer in index.html)
+`index.html` now holds only the markup, the CSS and the script tags. The code is in plain script files, loaded in this order, with no build step and no bundler:
+1. `lib/spectral.js`, `lib/perfect-freehand.js` (both `async`: the game runs without them until they arrive; mixing falls back to plain blending and the pen to plain lines).
+2. `core.js`: the loop (`frame`), saves (`LS`), helpers, sound, Toy Box data, screens (`go`, `showScr`), Settings, input, the game clock, the room engine (walking, stations, `drawLobby`) and the content pack loader (T034).
+3. `mediums.js`: the medium engine (`MEDIUMS`, grain painters, mixing, `medSeg`), paper stocks, medium tags.
+4. `desk.js`: the School Desk (pieces, cut, fold, stick, draw), the real desk supplies and painting kit, tabs and chips, flip paper.
+5. `classes.js`: Art Class (`CLASS`) and picture examples (`EXAMPLES`).
+6. `town.js`: Make a Level, Little Town (Build, Walk), companions, HUD layer, living town, Handy Notebook.
+7. `stations.js`: the rooms (`STATIONS`, `HOUSE`, `SHOPS`, `STATION_DRAW`), Pixel UI Kit, Toy Box library, projector, VHS, console save, 3D hooks, **start-up**, then Art Swap. It ends with `READY=1`.
+- `r3d.js` is unchanged and still loads only when 3D opens.
+- All files share one global scope, like the old single script. A `function` can be called from any file once the page has loaded. A `const` or `let` that is **used while a file is loading** must be in an earlier file (or earlier in the same file). When older notes below say "in index.html", search all the `.js` files for the comment title instead.
+- **READY** (core.js): taps, keys and resizes do nothing until the last file has loaded, so nothing runs half-loaded. Keep `READY=1` the last line of `stations.js`.
+- The start-up lines (`resize(); loadDesk(); ... requestAnimationFrame(frame)`) sit in `stations.js` just before the Art Swap block, the same place in the order as before the split.
+- The split was committed on its own first ("Split index.html into ...") with no change in behaviour, then the engine on top.
+
+### The medium engine (`mediums.js`)
+- **`MEDIUMS`** replaces the `MEDIA` list (`MEDIA` is kept as another name for the same list, so old code, old saves and `p.med` tags still work). One recipe per medium: `em`, `name`, `w` (width), `a` (opacity), `grain` (texture painter), `fixed` / `lift` (colour rules), `wet` (0 to 1: how much it smears), `mix` (`'spectral'` = wet paint that mixes, `'stack'` = dry, lies on top), `paper` (how each `STOCKS` paper reacts: `spread`, `soak`, `tooth`), `press` (S Pen pressure curve), `sound` (a `RUBS` name in core.js), `steps` (three class steps, shown in the Art box under "How to use it"), and the looks `halo`, `bloom`, `shine`, `aura`, `sparkle`, `glows`, `glitters`.
+- **To add a medium:** one new entry in `MEDIUMS`. If it needs its own texture, add a painter to `GRAIN_PAINT` (a function that draws a 512 px grey tile) and name it in `grain`. Nothing else: the Art box, the Toy Box medium filter, the notebook and the tags all read the list.
+- **Mixing** (`blendOn`, `strokeStart`, `blendStep`, `smix`): each stroke carries `B` (what is on the tip). For a `'spectral'` medium every step looks at the paper just ahead of the tip (`underAt`), picks some of that paint up (`B.pick`, `B.amt`, it wears off along the stroke: that is the smear) and lays down the spectral.js mix. Bare paper and a paler wash of the same colour do not count as paint (`samePaint`), so going over your own wash builds up as before. `smix(a,b,t)` mixes two `[r,g,b]` colours like paint and caches results.
+- **Settings > Paint mixes** (`SET.blend`, on unless turned off). Off = every medium draws exactly as in v1.6b (checked pixel for pixel). `medSeg(c,m,col,pts,k,stock,B)`: without `B` it also draws the old way.
+- **Paper feel** (only with Paint mixes on, except watercolour on watercolour paper, which is the old v1.6b reaction and always shows): rough papers (cardboard, kraft) take dry mediums more lightly, thirsty papers spread paint.
+- **S Pen** (`drawStart`, `drawFree`, `penFlush` in desk.js): only for `pointerType === 'pen'`. perfect-freehand smooths the points and the pressure; `pressK` turns pressure into width from the recipe. Finger and mouse strokes are unchanged.
+- **Grain masks** are now made the first time a grain medium is used (`grainInit`, `grainMask`), not at start-up.
+- **Yarn and felt textures:** `GRAIN_PAINT.felt`, `.knit`, `.stitched`, `.burlap` are copied from Mythic Forge (`myth-forge/materials.js`). No medium uses them yet: they are ready for the Clay Table / yarn ideas (T041). To try one, set `grain:'felt'` on any recipe.
+
+### Real desk supplies and the painting kit (`desk.js`, "REAL DESK SUPPLIES AND THE PAINTING KIT")
+- **Settings > Drawing tools** (`SET.tools`): **Real desk** (new players) or **Quick tools** (old saves keep this; today's bottom toolbar only). Both draw with the same recipes, and the Art box chip works in both (it is how you reach charcoal, chalk, oil pastels and the gel, glitter and glow pens).
+- Real desk: a **crayon box** (12 crayons) and a **pencil cup** (a pencil and 12 coloured pencils) above the paper, a **marker tray** (12 markers) below it, and to the right the **palette**, a **brush rest** (round, flat and fine brush, palette knife) and a **water cup**. The Draw tab's **Paints** chip slides the view to the painting kit and back.
+- Tap a supply to pick it up (if they are too close together on the screen, the first tap zooms in). It shows in the Player Hand and the Pencil tool draws with it. Tap the bare desk with the Pencil tool to put it down; it stays there. Picking up another one puts the first back in its box.
+- **Palette** (`paletteDlg`): pick two paints, slide to mix (spectral.js), pick poster paint or watercolour, "Load the brush". **Dirty brush:** loading a new colour without rinsing, or dragging through wet paint, leaves old paint on the brush (`DSV.dirt`) that tints every stroke until you tap the **water cup** (`dsRinse`); the water slowly takes on the colours.
+- Brush shapes are `DS_TIPS` (width factor, flat, knife). The palette knife always uses poster paint.
+- Save: `craftloft_desksupplies` = `{out:{id:[x,y,rot]}, held, pal:{a,b,t,paint}, bcol, dirt, cup}`. To add a supply: one more entry in `DS_LIST`.
+- The default School Desk zoom is a little further out with the Real desk on, so the supplies above and below the paper show on a phone.
+
+### Choices made
+- **Paint mixes is on for everyone**, old saves too (it is the point of the update); Settings turns it off.
+- **Blending is done per brush step, not per pixel**, on the normal 2D canvas. It is fast on a phone, so no GPU version was needed.
+- **MEDIA stays as a second name** for MEDIUMS rather than renaming every use.
+- **The room engine's functions moved to core.js** (as the order asked), but the room data and `let RM` stay in stations.js because they need the station lists while loading.
+- **Supplies that are not crayons, pencils or markers** stay in the Art box rather than getting desk objects (the order named three holders and the painting kit).
+
+### Tests run
+Playwright at 384 x 824 touch and 1920 x 1080, checks in the T024 Drive folder (`checks-t024-*.js`): a real v1.5.2 save loads with its desk piece, Quick tools as the default, every screen, tool and dialog opens, Retro 3D loads; with Paint mixes off all 12 mediums on three papers are pixel-identical to the build before this one; blue over yellow watercolour turns green; poster paint smears and clears; pencil does not mix; mixing works in the notebook; new player gets the Real desk; pick up, draw, put down, reload (stays put), pick up again; pencil cup and marker tray; palette mix and load; dirty brush and rinse; flat, fine and knife strokes; S Pen pressure changes width; Settings switch; no page errors. 49/49.
+- **Load time** (phone size, CPU slowed 4x, middle of 9 runs, twice): live v1.6c 471 and 501 ms; `dev` before this ticket 538 and 527 ms; this build 510 and 539 ms. So this build is no slower than the `dev` it started from, but `dev` as a whole is about 40 ms (8%) slower than live v1.6c. That gap was already there from T020 to T034. The likely cause is the content pack check (T034), which asks the server for `content/default-pack.json` and waits for the answer before the game starts.
+- **Not checked:** a real S Pen and a real phone (the tests fake pen pressure and phone size), and sound by ear.
 
 ## Creator Mode (built Nov 13, 2026 by Opus, ticket T034; on `dev` only, not live)
 The owner's own page for adding new default things to the game for every new player. Code: `creator.html` (the whole page) and the "CONTENT PACK (T034)" block at the end of the main script in index.html, plus small hooks marked T034.
@@ -198,7 +247,7 @@ Code: search "v1.6a". It was first sent as a patch/bundle in Drive (folder "Shoe
 6. The Dress-up Mirror moved down a little to make room for the bookshelf.
 
 ## How the new parts work (for the next builder)
-All of this is in `index.html`. Search for the comment titles below.
+Since T024 the code is in `core.js`, `mediums.js`, `desk.js`, `classes.js`, `town.js` and `stations.js` (see the T024 section at the top). Search those files for the comment titles below.
 - **Rooms.** The lobby code now runs any room. `RM` is the room you are in: `LOB` (the studio) or `HOUSE`. Each room has a size, a station list (`stn`) and a background function (`bg`). The lobby's stations are still the `STATIONS` list. To add a station: one line in the room's list and one draw function in `STATION_DRAW`. A station does one thing: `go:'screen'`, `act:()=>...`, or `soon:1`.
 - **Built-in tools ("BUILT-IN TOOLS" comment).** `TOOLS` lists each tool's folder. `openTool('shelf')` or `openTool('bbd')` shows the tool full screen in a frame, with a bar on top: a "Back to the studio / house" button, the tool's name, and a small ↗ link that opens the tool on its own page. The phone's Back button also closes it. The studio's music goes quiet and the game loop pauses while a tool is open. Closing removes the frame, so the tool's sound stops.
 - **Saves.** Each tool saves under its own keys in the same browser storage (`storyshelf_v1`, `ds_*`), so nothing clashes with `craftloft_*`.
@@ -241,6 +290,7 @@ All of this is in `index.html`. Search for the comment titles below.
 
 ## Next steps
 - Owner plays v1.6 on the phone (live site) and says what to change. Most worth a look: Retro 3D on the real phone (speed, joystick feel), the art mediums at the School Desk, the Handy Notebook while walking.
+- Medium engine (T024): built on `dev`. Owner tries the Real desk, the palette and paint mixing on the phone with the S Pen. Next in the lane: Physics and Water (T025).
 - VHS spot (T020), picture examples (T021) and Art Swap (T022): built on `dev`, waiting for the owner's look on the private preview before they go live.
 - Art Swap: when he says "art pack ready", commit his pack as `art/default-pack.json`.
 - 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows), real 3D water and physics (from the plan doc).

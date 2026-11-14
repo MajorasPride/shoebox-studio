@@ -1,16 +1,18 @@
 'use strict';
 /* Shoebox Studio: core.js — the loop, saves (LS), helpers, sound, Toy Box data, screens and input, the game clock, the room engine and the content pack loader. Loaded first. */
 
-/* Shoebox Studio (was Craft Loft) v1.6c + T020 VHS spot + T021 picture examples + T022 Art Swap — by MajorasPride. All art, sound and music are made in code. No outside assets. */
+/* Shoebox Studio (was Craft Loft) v1.6c + T020 VHS spot + T021 picture examples + T022 Art Swap + T024 medium engine and file split — by MajorasPride. All art, sound and music are made in code. No outside assets. */
 const $=s=>document.querySelector(s);
 const cv=$('#cv'),g=cv.getContext('2d');
 let W=0,H=0,DPR=1,NOW=0,DT=0,SCR='title',FROM='',RESUMING=0;
+/* T024: the game is now several files. READY turns 1 at the end of stations.js (the last file). Until then taps, keys and resizes do nothing, so nothing runs half-loaded. */
+let READY=0;
 /* v1.5: the game remembers where you left off (the studio, your house or Little Town) and starts you there. New players start in the studio. */
 function resume(){const wh=(typeof LS!=='undefined'&&LS.get('where',null))||{s:'home'};const s=['home','house','town','shop'].includes(wh.s)?wh.s:'home';if(s==='house'){const hh=LS.get('househero',null);if(hh)HOUSE.hero=hh}if(s==='shop'){if(wh.shop&&SHOPS[wh.shop])SHOP_ID=wh.shop;const sh=LS.get(shopRoom().key,null);if(sh)shopRoom().hero=sh}RESUMING=1;try{go(s)}finally{RESUMING=0}if(s==='town'&&wh.walk){ST.walk=true;ST.cam.x=TOWN.hero.x-W/2/ST.z;ST.cam.y=TOWN.hero.y-H*.45/ST.z;buildStageUI();LS.set('where',{s:'town',walk:1})}}
 const TAU=Math.PI*2,clamp=(v,a,b)=>v<a?a:v>b?b:v,rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR)}
-addEventListener('resize',()=>{resize();if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(isRoomScr(SCR)){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
+addEventListener('resize',()=>{resize();if(!READY)return;if(SCR==='craft')fitDesk(false);if(SCR==='level'||SCR==='town')stageZoom();if(isRoomScr(SCR)){lobZoom();lobCam(true)}if(SCR==='kit')kitSize()});
 const LS={get(k,d){try{const v=localStorage.getItem('craftloft_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('craftloft_'+k,JSON.stringify(v));return true}catch(e){return false}}};
 /* ================= BUILT-IN TOOLS (Story Shelf, Beat Bop Doodle) ================= */
 /* Each tool is its own page in a folder of this repo. openTool() shows it full screen in a frame, with a Back button on top.
@@ -24,6 +26,8 @@ function closeTool(fromBack){if(!OVL)return;if(OVL==='proj'){projClose(fromBack)
   if(!fromBack){try{if(history.state&&history.state.sbsTool)history.back()}catch(e){}}}
 addEventListener('popstate',()=>{if(OVL)closeTool(true)});/* the phone's Back button closes the tool too */
 const SET=Object.assign({music:true,mv:.5,sv:.8,hand:1},LS.get('settings',{}));
+/* T024: Drawing tools. 'real' = supplies on the School Desk, 'quick' = the bottom toolbar only. Old saves keep Quick tools; new players start with the Real desk. SET.blend (Paint mixes) is on unless turned off. */
+if(SET.tools!=='real'&&SET.tools!=='quick'){SET.tools=LS.get('toys',null)?'quick':'real';LS.set('settings',SET)}
 function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 /* ---- matrices: [a,b,c,d,e,f] like canvas ---- */
 const I=[1,0,0,1,0,0];
@@ -89,7 +93,7 @@ const SFX={
   win(){[587,740,880,1175].forEach((f,i)=>tn({f,d:.3,g:.16,at:i*.11,type:'triangle'}))},
   step(){nz({type:'lowpass',f:700,d:.04,g:.1})}
 };
-const RUBS={pencil:{f:3300,q:.9,g:.2},eraser:{f:700,q:.6,g:.24},glue:{f:420,q:.6,g:.34},crease:{f:4300,q:1.6,g:.2},tape:{f:2100,q:6,g:.3},compass:{f:3900,q:1.4,g:.14}};
+const RUBS={pencil:{f:3300,q:.9,g:.2},crayon:{f:1500,q:.8,g:.24},marker:{f:5200,q:2.2,g:.12},brush:{f:900,q:.5,g:.13},chalk:{f:2400,q:.7,g:.26},/* T024: the medium recipes pick one of these */eraser:{f:700,q:.6,g:.24},glue:{f:420,q:.6,g:.34},crease:{f:4300,q:1.6,g:.2},tape:{f:2100,q:6,g:.3},compass:{f:3900,q:1.4,g:.14}};
 function rub(kind,speed){if(!AU.c)return;const r=RUBS[kind],t=AU.c.currentTime;AU.ff.frequency.setTargetAtTime(r.f*rnd(.9,1.1),t,.01);AU.ff.Q.setTargetAtTime(r.q,t,.01);AU.fg.gain.setTargetAtTime(r.g*clamp(speed/500,.2,1),t,.015);AU.rubT=performance.now()}
 function auTick(){if(AU.c&&AU.rubT&&performance.now()-AU.rubT>70){AU.fg.gain.setTargetAtTime(0,AU.c.currentTime,.03);AU.rubT=0}}
 /* gentle music box loop, written for Shoebox Studio */
@@ -174,8 +178,8 @@ function updItemBar(){if(ST.kind==='level'&&ST.layer==='hud'){updHudBar();return
   bar.querySelectorAll('button').forEach(b=>b.onclick=()=>{const a=b.dataset.a,arr=ST.d.items,i=arr.indexOf(it);SFX.tick();if(a==='sm')it.s=Math.max(.08,it.s/1.15);else if(a==='bg')it.s=Math.min(3,it.s*1.15);else if(a==='fl')it.flip=-it.flip;else if(a==='ro'){it.rot=(faceStep(it)+1)%8;toast('In 3D it faces '+FACE_NAMES[it.rot])}else if(a==='bh'){const ks=Object.keys(BEH);it.beh=ks[(ks.indexOf(it.beh)+1)%ks.length];toast({solid:'Solid: you can stand on it',scenery:'Scenery: just for looks',bouncy:'Bouncy: boing!',collect:'Collect: grab it for a point',ouch:'Ouch: touching it sends you back'}[it.beh])}else if(a==='tb'){const ks=Object.keys(TBEH);it.tb=ks[(ks.indexOf(it.tb||'block')+1)%ks.length]}else if(a==='ac'){const ks=Object.keys(TACT);it.act=ks[(ks.indexOf(it.act||'none')+1)%ks.length];it.open=false;VEH.delete(it);toast(TACT_TIP[it.act])}else if(a==='up'){arr.splice(i,1);arr.push(it)}else if(a==='dn'){arr.splice(i,1);arr.unshift(it)}else if(a==='rm'){arr.splice(i,1);ST.sel=null;SFX.crumple(5)}saveStage();updItemBar()})}
 $('#pStop').onclick=()=>stopPlay();
 [['#pL','l'],['#pR','r'],['#pJ','j']].forEach(([id,k])=>{const b=$(id),dn=e=>{e.preventDefault();auInit();ST.keys[k]=1;if(k==='j')ST.keys.jb=.13;b.classList.add('dn');try{b.setPointerCapture(e.pointerId)}catch(_){}},up=()=>{ST.keys[k]=0;b.classList.remove('dn')};b.addEventListener('pointerdown',dn);b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up)});
-addEventListener('keydown',e=>{if(!ST.play||e.repeat)return;const k=e.key;if(k==='ArrowLeft'||k==='a')ST.keys.l=1;else if(k==='ArrowRight'||k==='d')ST.keys.r=1;else if(k===' '||k==='ArrowUp'||k==='w'){ST.keys.j=1;ST.keys.jb=.13}});
-addEventListener('keyup',e=>{const k=e.key;if(k==='ArrowLeft'||k==='a')ST.keys.l=0;else if(k==='ArrowRight'||k==='d')ST.keys.r=0;else if(k===' '||k==='ArrowUp'||k==='w')ST.keys.j=0});
+addEventListener('keydown',e=>{if(!READY||!ST.play||e.repeat)return;const k=e.key;if(k==='ArrowLeft'||k==='a')ST.keys.l=1;else if(k==='ArrowRight'||k==='d')ST.keys.r=1;else if(k===' '||k==='ArrowUp'||k==='w'){ST.keys.j=1;ST.keys.jb=.13}});
+addEventListener('keyup',e=>{if(!READY)return;const k=e.key;if(k==='ArrowLeft'||k==='a')ST.keys.l=0;else if(k==='ArrowRight'||k==='d')ST.keys.r=0;else if(k===' '||k==='ArrowUp'||k==='w')ST.keys.j=0});
 /* ---- toy box screen: see ASSET LIBRARY below ---- */
 /* ---- settings ---- */
 /* v1.5.2: full screen. The button toggles it; if you left it on, tapping the title screen turns it back on (browsers need a tap first). Hidden where the browser can't do it (iPhone Safari). */
@@ -187,7 +191,8 @@ $('#bFull').onclick=()=>{auInit();SFX.tick();if(FS.on()){FS.exit();LS.set('fs',0
 const fsIcon=()=>{$('#bFull').textContent=FS.on()?'🗗':'⛶'};
 document.addEventListener('fullscreenchange',fsIcon);
 document.addEventListener('webkitfullscreenchange',fsIcon);
-$('#bSet').onclick=()=>{auInit();SFX.tick();dlg('<h2>Settings</h2><div class="row"><label>Music</label><button class="tog'+(SET.music?' on':'')+'" id="sM" aria-label="Music on or off"></button></div><div class="row"><label>Music volume</label><input type="range" id="sMV" min="0" max="1" step="0.05" value="'+SET.mv+'"></div><div class="row"><label>Craft sounds</label><input type="range" id="sSV" min="0" max="1" step="0.05" value="'+SET.sv+'"></div><div class="row"><label>Hand colour</label>'+HANDS.map((h,i)=>'<button class="hsw'+(SET.hand===i?' on':'')+'" data-h="'+i+'" style="background:'+h+'" aria-label="hand colour"></button>').join('')+'</div><p style="font-size:12.5px;opacity:.8">Turn the music off and the craft sounds up for a quiet "just the sounds" desk. Every picture and sound in Shoebox Studio is made in code.</p><div class="btns"><button class="alt" id="sSt">Bring back starter pieces</button><button class="bad" id="sCl">Clear the desk</button><button id="sOk">Done</button></div>',d=>{const sv=()=>{LS.set('settings',SET);setVol()};
+$('#bSet').onclick=()=>{auInit();SFX.tick();dlg('<h2>Settings</h2><div class="row"><label>Music</label><button class="tog'+(SET.music?' on':'')+'" id="sM" aria-label="Music on or off"></button></div><div class="row"><label>Music volume</label><input type="range" id="sMV" min="0" max="1" step="0.05" value="'+SET.mv+'"></div><div class="row"><label>Craft sounds</label><input type="range" id="sSV" min="0" max="1" step="0.05" value="'+SET.sv+'"></div><div class="row"><label>Hand colour</label>'+HANDS.map((h,i)=>'<button class="hsw'+(SET.hand===i?' on':'')+'" data-h="'+i+'" style="background:'+h+'" aria-label="hand colour"></button>').join('')+'</div><div class="row"><label>Drawing tools</label><div class="pseg" id="sTools"><button data-t="real">Real desk</button><button data-t="quick">Quick tools</button></div></div><div class="row"><label>Paint mixes</label><button class="tog'+(SET.blend!==false?' on':'')+'" id="sBl" aria-label="Paint mixes like real paint, on or off"></button></div><p style="font-size:12.5px;opacity:.8">Turn the music off and the craft sounds up for a quiet "just the sounds" desk. Every picture and sound in Shoebox Studio is made in code.</p><div class="btns"><button class="alt" id="sSt">Bring back starter pieces</button><button class="bad" id="sCl">Clear the desk</button><button id="sOk">Done</button></div>',d=>{const sv=()=>{LS.set('settings',SET);setVol()};
+    {const tb=()=>d.querySelectorAll('#sTools button').forEach(b=>b.classList.toggle('on',b.dataset.t===SET.tools));tb();d.querySelectorAll('#sTools button').forEach(b=>b.onclick=()=>{SET.tools=b.dataset.t;tb();sv();SFX.tick();if(SCR==='craft')renderChips()});d.querySelector('#sBl').onclick=e=>{SET.blend=SET.blend===false;e.target.classList.toggle('on',SET.blend);sv()}}/* T024 */
     d.querySelector('#sM').onclick=e=>{SET.music=!SET.music;e.target.classList.toggle('on',SET.music);sv()};d.querySelector('#sMV').oninput=e=>{SET.mv=+e.target.value;sv()};d.querySelector('#sSV').oninput=e=>{SET.sv=+e.target.value;sv()};d.querySelector('#sSV').onchange=()=>SFX.snip('regular');
     d.querySelectorAll('.hsw').forEach(b=>b.onclick=()=>{SET.hand=+b.dataset.h;d.querySelectorAll('.hsw').forEach(x=>x.classList.toggle('on',x===b));sv()});
     d.querySelector('#sSt').onclick=()=>{mkStarters().forEach(s=>{if(!toyById(s.id))TOYS.push(s)});saveToys();libSync();updBadge();closeDlg();toast('Starter pieces are in the toy box');if(SCR==='box')renderBox();if(SCR==='level'||SCR==='town')buildStageUI()};
@@ -196,7 +201,7 @@ $('#bSet').onclick=()=>{auInit();SFX.tick();dlg('<h2>Settings</h2><div class="ro
 /* ---- touch / pen / mouse on the canvas ---- */
 const PT=new Map();
 let pinch=null,plock=false;
-const NOP=()=>{},handler=()=>SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:isRoomScr(SCR)?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>{if(FS.can&&LS.get('fs',0)&&!FS.on())FS.enter();resume()},p:NOP}:null;
+const NOP=()=>{},handler=()=>!READY?null:SCR==='craft'?{d:cDown,m:cMove,u:cUp,p:cPinch}:(SCR==='level'||SCR==='town')?{d:sDown,m:sMove,u:sUp,p:sPinch}:isRoomScr(SCR)?{d:lDown,m:lMove,u:lUp,p:NOP}:SCR==='title'?{d:NOP,m:NOP,u:()=>{if(FS.can&&LS.get('fs',0)&&!FS.on())FS.enter();resume()},p:NOP}:null;
 cv.addEventListener('pointerdown',e=>{auInit();const h=handler();if(!h)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(PT.size===1&&!plock)h.d(e);else if(PT.size===2){h.u(e,true);plock=true;const[a,b]=[...PT.values()];pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,d:1,mx:(a.x+b.x)/2,my:(a.y+b.y)/2}}});
 cv.addEventListener('pointermove',e=>{const h=handler();if(!h||!PT.has(e.pointerId))return;PT.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -241,7 +246,7 @@ $('#bClock').onclick=()=>{auInit();SFX.tick();clockDlg()};
 function frame(ts){DT=Math.min(.05,(ts-NOW)/1000||0);NOW=ts;clkTick(DT);if(OVL){requestAnimationFrame(frame);return}g.setTransform(DPR,0,0,DPR,0,0);
   if(SCR==='title')drawHome();else if(isRoomScr(SCR)){updLobby();if(isRoomScr(SCR))drawLobby()}else if(SCR==='craft'){updCraft();drawCraft()}else if(SCR==='level'||SCR==='town'){updStage();drawStage()}else{drawBack(.3);if(SCR==='kit')kitTick()}
   auTick();requestAnimationFrame(frame)}
-addEventListener('pagehide',()=>{clkSave();if(SCR==='town')LS.set('town',TOWN)});
+addEventListener('pagehide',()=>{if(!READY)return;clkSave();if(SCR==='town')LS.set('town',TOWN)});
 
 /* ================= CONTENT PACK (T034) =================
    content/default-pack.json is made with creator.html (the owner's Creator Mode page, not linked from the game).

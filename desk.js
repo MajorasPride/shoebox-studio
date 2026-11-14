@@ -9,7 +9,7 @@ const SCIS={regular:'#f08a2e',safety:'#3767bb',zigzag:'#d9463e',wavy:'#8b5cb6',s
 function newPiece(art,x,y,rot,color){return{id:++UID,art,w:art.width,h:art.height,x,y,rot:rot||0,color,layers:null,hist:[],creases:[],deco:[],strokes:[],soft:null,pend:null,crumple:0,dirty:true,cow:false,comp:null}}
 const pieceById=id=>C.pieces.find(p=>p.id===id);
 function deskCtr(){const bh=$('#craftUI').offsetHeight||130;return{x:W/2,y:46+(H-46-bh)/2,h:H-46-bh}}
-function fitDesk(reset){C.ctr=deskCtr();if(reset!==false){C.view.z=clamp(Math.min((W-14)/500,(C.ctr.h-8)/650),.35,1.6);C.view.x=0;C.view.y=0}}
+function fitDesk(reset){C.ctr=deskCtr();if(reset!==false){C.view.z=clamp(Math.min((W-14)/500,(C.ctr.h-8)/(dsOn()?900:650)),.35,1.6)/* T024: the Real desk zooms out a little so the supplies above and below the paper show */;C.view.x=0;C.view.y=0}}
 function s2w(sx,sy){const c=C.ctr||deskCtr(),v=C.view;return{x:(sx-c.x)/v.z+v.x,y:(sy-c.y)/v.z+v.y}}
 function toLocal(p,wx,wy){const dx=wx-p.x,dy=wy-p.y,c=Math.cos(p.rot),s=Math.sin(p.rot);return{x:dx*c+dy*s+p.w/2,y:-dx*s+dy*c+p.h/2}}
 function toWorld(p,l){const x=l.x-p.w/2,y=l.y-p.h/2,c=Math.cos(p.rot),s=Math.sin(p.rot);return{x:p.x+x*c-y*s,y:p.y+x*s+y*c}}
@@ -183,8 +183,8 @@ function loadDesk(){const d=LS.get('desk',null);if(!d||!d.pieces)return;UID=d.ui
 /* ================= pointer: what each tool does ================= */
 function knobPos(p){const k=ensureSkin(p);return ap(pm(p),{x:k.ox+k.c.width/2,y:k.oy-34/C.view.z})}
 function cutOff(st){const s=st.s;switch(st.kind){case'safety':st.rw=clamp(st.rw+rnd(-.5,.5),-1.5,1.5);return 1.8*Math.sin(s*.09)+st.rw;case'zigzag':{const u=s/16;return(2*Math.abs(2*(u-Math.floor(u+.5)))-1)*6.5}case'wavy':return 6*Math.sin(s*TAU/30);case'scallop':return 5-10*Math.abs(Math.sin(s*Math.PI/24));case'tear':st.rw=clamp(st.rw+rnd(-1.6,1.6),-5,5);return st.rw;default:return 0}}
-function drawSeg(st,pts){const p=st.p;if(st.er){const b=pts[pts.length-1];p.strokes=p.strokes.filter(s2=>!s2.pts.some(u=>dist(u,b)<11))}else if(st.rec){const r=st.rec[st.rec.length-1];for(const q of pts)if(!r.length||dist(r[r.length-1],q)>=2.5)r.push({x:q.x,y:q.y})}if(!st.er)medMark(p);artLayerDraw(p,st.L,c=>{c.globalCompositeOperation='source-atop';if(!st.er){medSeg(c,AB.med,AB.col,pts,1,p.med&&p.med.stock==='water');return}/* v1.6b: every medium */c.strokeStyle=p.color;c.lineWidth=15;c.lineCap=c.lineJoin='round';c.beginPath();pts.forEach((q,i)=>i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y));if(pts.length===1)c.lineTo(pts[0].x+.1,pts[0].y);c.stroke()})}
-function cDown(e){const w=s2w(e.clientX,e.clientY),z=C.view.z,t=C.tool;C.ptr=w;if(C.handA||C.tcut)return;let gh=guideAt(w);
+function drawSeg(st,pts){const p=st.p;if(st.er){const b=pts[pts.length-1];p.strokes=p.strokes.filter(s2=>!s2.pts.some(u=>dist(u,b)<11))}else if(st.rec){const r=st.rec[st.rec.length-1];for(const q of pts)if(!r.length||dist(r[r.length-1],q)>=2.5)r.push({x:q.x,y:q.y})}if(!st.er)medMark(p);artLayerDraw(p,st.L,c=>{c.globalCompositeOperation='source-atop';if(!st.er){medSeg(c,AB.med,AB.col,pts,st.pk||1,p.med&&p.med.stock,st.B);return}/* v1.6b: every medium; T024: st.B mixes, st.pk is pen pressure */c.strokeStyle=p.color;c.lineWidth=15;c.lineCap=c.lineJoin='round';c.beginPath();pts.forEach((q,i)=>i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y));if(pts.length===1)c.lineTo(pts[0].x+.1,pts[0].y);c.stroke()})}
+function cDown(e){const w=s2w(e.clientX,e.clientY),z=C.view.z,t=C.tool;C.ptr=w;C.hp=w;if(C.handA||C.tcut)return;let gh=guideAt(w);if(dsDown(w,gh,t))return;/* T024: desk supplies */
   if(gh&&gh.mode==='body'){if(t==='pencil'||t==='eraser'){if(!C.tipG){C.tipG=1;toast('Rulers and stencils stay put while you draw. Slide them with the round + grip.')}return}gh=null}
   if(gh&&gh.mode!=='snap'){C.st={k:'guide',g:gh.g,mode:gh.mode,w0:w,gx:gh.g.x,gy:gh.g.y,off:gh.g.rot-Math.atan2(w.y-gh.g.y,w.x-gh.g.x)};return}
   if(t==='hand'){if(C.sel&&dist(knobPos(C.sel),w)<24/z){checkpoint();const pl=plan(C.sel),piv=pl.mode==='swing'?pl.pivot:{x:C.sel.x,y:C.sel.y};C.st={k:'rot',set:pl.set,piv,a0:Math.atan2(w.y-piv.y,w.x-piv.x),moved:1};return}
@@ -195,7 +195,7 @@ function cDown(e){const w=s2w(e.clientX,e.clientY),z=C.view.z,t=C.tool;C.ptr=w;i
     else{p=topPieceAt(w.x,w.y);if(p)l=toLocal(p,w.x,w.y)}
     if(!p){toast(t==='pencil'?'The pencil draws on paper. Put a sheet down first.':'Rub the eraser over a pencil line.');return}
     checkpoint();settle(p);C.sel=p;let L=null;if(p.layers){L=topLayer(p,l)||topLayer(p,toLocal(p,w.x,w.y))||p.layers[p.layers.length-1]}
-    C.st={k:'draw',p,L,last:l,snap,er:t==='eraser',rec:[[]],lw:w,lt:performance.now()};drawSeg(C.st,[l]);return}
+    C.st={k:'draw',p,L,last:l,snap,er:t==='eraser',rec:[[]],lw:w,lt:performance.now()};drawStart(C.st,e,t);/* T024 */drawSeg(C.st,[l]);return}
   if(t==='teacher'){const b=teacherAt(w);if(!b)toast('Draw a pencil line first. Then tap the line and the teacher cuts along it.');else startTeacher(b);return}
   if(t==='compass'){C.st={k:'compass',c:w,r:0,w,target:topPieceAt(w.x,w.y)||C.sel};return}
   if(t==='punch'){const p=topPieceAt(w.x,w.y);if(!p){toast('Punch a hole in a paper');return}checkpoint();settle(p);const l=toLocal(p,w.x,w.y);eachLayerDraw(p,c=>{c.globalCompositeOperation='destination-out';c.beginPath();c.arc(l.x,l.y,8,0,TAU);c.fill()});SFX.punch();spawnBits(w,p.color,p.layers?p.layers.length:1);C.sel=p;splitPiece(p);saveDeskSoon();return}
@@ -208,13 +208,13 @@ function cDown(e){const w=s2w(e.clientX,e.clientY),z=C.view.z,t=C.tool;C.ptr=w;i
   if(t==='pin'){const hits=[];for(let i=C.pieces.length-1;i>=0&&hits.length<2;i--)if(hitPiece(C.pieces[i],w.x,w.y))hits.push(C.pieces[i]);if(hits.length<2){toast('Lay one piece on another, then push the fastener through both');return}checkpoint();const[top,bot]=hits,l=toLocal(top,w.x,w.y);C.bonds.push({a:bot.id,b:top.id,type:'pin',la:toLocal(bot,w.x,w.y),lb:l,gid:++C.gid});top.deco.push({type:'pin',x:l.x,y:l.y,gid:C.gid});SFX.pin();toast('Pinned! Drag the top piece to swing it');C.sel=top;saveDeskSoon();return}
   if(t==='unstick'){const p=topPieceAt(w.x,w.y);if(!p||!isBonded(p)){toast('Tap a piece that is stuck to another');return}checkpoint();const gone=C.bonds.filter(b=>b.a===p.id||b.b===p.id).map(b=>b.gid);C.bonds=C.bonds.filter(b=>b.a!==p.id&&b.b!==p.id);C.pieces.forEach(q=>q.deco=q.deco.filter(d=>!gone.includes(d.gid)));SFX.peel();p.x+=8;p.y+=8;C.sel=p;saveDeskSoon()}}
 function spd(st,w){const now=performance.now(),v=dist(w,st.lw)*C.view.z/Math.max(4,now-st.lt)*1000;st.lw=w;st.lt=now;return v}
-function cMove(e){const st=C.st;if(!st)return;const w=s2w(e.clientX,e.clientY),z=C.view.z;C.ptr=w;
+function cMove(e){const st=C.st;if(!st)return;const w=s2w(e.clientX,e.clientY),z=C.view.z;C.ptr=w;C.hp=w;
   switch(st.k){
     case'pan':C.view.x=st.vx-(e.clientX-st.sx)/z;C.view.y=st.vy-(e.clientY-st.sy)/z;clampView();break;
     case'guide':{const G=st.g;if(st.mode==='move'){G.x=st.gx+w.x-st.w0.x;G.y=st.gy+w.y-st.w0.y}else if(st.mode==='rot')G.rot=Math.atan2(w.y-G.y,w.x-G.x)+st.off;else{const d=dist(w,G);G.size=clamp((d/Math.SQRT2+18)*2,90,440);G.rot=Math.atan2(w.y-G.y,w.x-G.x)-Math.PI/4}st.moved=1;break}
     case'move':{const dx=w.x-st.last.x,dy=w.y-st.last.y;st.set.forEach(p=>{p.x+=dx;p.y+=dy});st.last=w;st.moved+=Math.abs(dx)+Math.abs(dy);break}
     case'rot':{const a=Math.atan2(w.y-st.piv.y,w.x-st.piv.x);rotateSet(st.set,st.piv,a-st.a0);st.moved+=Math.abs(a-st.a0)*50;st.a0=a;break}
-    case'draw':{const p=st.p;if(st.snap){const pj=plProj(st.snap.pl,toLocal(p,w.x,w.y),st.snap.t);if(pj){const pts=plPath(st.snap.pl,st.snap.t,pj.t),e=toWorld(p,pts[pts.length-1]);if(underGuide(e,st.snap.g)){if(st.rec[st.rec.length-1].length)st.rec.push([])}else drawSeg(st,pts);st.snap.t=pj.t;st.last=pts[pts.length-1]}}else{const l=toLocal(p,w.x,w.y);if(underGuide(w)){st.last=null;if(st.rec[st.rec.length-1].length)st.rec.push([])}else{drawSeg(st,st.last?[st.last,l]:[l]);st.last=l}}rub(st.er?'eraser':'pencil',spd(st,w));break}
+    case'draw':{const p=st.p;if(st.snap){const pj=plProj(st.snap.pl,toLocal(p,w.x,w.y),st.snap.t);if(pj){const pts=plPath(st.snap.pl,st.snap.t,pj.t),e=toWorld(p,pts[pts.length-1]);if(underGuide(e,st.snap.g)){if(st.rec[st.rec.length-1].length)st.rec.push([])}else drawSeg(st,pts);st.snap.t=pj.t;st.last=pts[pts.length-1]}}else{const l=toLocal(p,w.x,w.y);if(underGuide(w)){st.last=null;if(st.rec[st.rec.length-1].length)st.rec.push([])}else{drawFree(st,l,e);/* T024 */st.last=l}}rub(st.er?'eraser':medSound(AB.med),spd(st,w));break}
     case'compass':st.r=dist(w,st.c);st.w=w;break;
     case'cut':cutMove(st,w);break;
     case'fold':{const p=st.p,l=toLocal(p,w.x,w.y),B=snapTo(foldCands(st.base),l,20/z,st.A)||l;st.B=B;st.ok=false;p.layers=st.prev;p.dirty=true;if(dist(st.A,B)<10)break;
@@ -237,7 +237,7 @@ function cUp(e,cancel){const st=C.st;C.st=null;if(!st)return;const w=C.ptr;
   switch(st.k){
     case'guide':if(st.moved&&st.g.type!=='stencil')SFX.clack();else if(st.moved)SFX.tick();break;
     case'move':case'rot':if(st.moved<2)C.undo.pop();else{tryBond(st.set);saveDeskSoon()}break;
-    case'draw':if(!st.er)st.rec.forEach(r=>{if(r.length>1)st.p.strokes.push({pts:r})});saveDeskSoon();break;
+    case'draw':penFlush(st,true);dsStrokeEnd(st);/* T024 */if(!st.er)st.rec.forEach(r=>{if(r.length>1)st.p.strokes.push({pts:r})});saveDeskSoon();break;
     case'compass':if(st.r>8){const p=st.target;if(!p){toast('Put the compass point on a paper');break}checkpoint();settle(p);const c=toLocal(p,st.c.x,st.c.y),L=p.layers?(topLayer(p,c)||p.layers[p.layers.length-1]):null;C.anims.push({p,L,c,r:st.r,a0:Math.atan2(st.w.y-st.c.y,st.w.x-st.c.x)-p.rot,t:0,prev:0});const cp=[];for(let i=0;i<=56;i++)cp.push({x:c.x+Math.cos(i/56*TAU)*st.r,y:c.y+Math.sin(i/56*TAU)*st.r});p.strokes.push({pts:cp});C.sel=p}break;
     case'cut':if(st.target){let n=0;st.all.forEach(p=>{if(C.pieces.includes(p))n+=splitPiece(p).length-1});if(n>0)SFX.thwap();saveDeskSoon()}else toast(st.kind==='tear'?'Drag across the paper to tear it':'Drag the scissors across the paper');break;
     case'fold':{const p=st.p;if(st.ok&&!cancel){p.strokes=[];p.hist.push(st.prev);p.pend=st.res.segs;p.soft={a:st.res.soft.a,b:st.res.soft.b,bins:new Array(10).fill(0)};p.dirty=true;SFX.fold();setHint('Now rub along the glowing fold to press the crease');saveDeskSoon()}else{p.layers=st.prev;p.dirty=true;C.undo.pop();if(st.thick)toast('Too thick to fold again!')}break}
@@ -266,7 +266,7 @@ function drawScissors(c,x,y,ang,open,col){c.save();c.translate(x,y);c.rotate(ang
 function drawCraft(){const v=C.view,ct=C.ctr||deskCtr(),z=v.z;g.fillStyle='#5b3d2b';g.fillRect(0,0,W,H);g.save();g.translate(ct.x,ct.y);g.scale(z,z);g.translate(-v.x,-v.y);
   g.fillStyle='rgba(0,0,0,.35)';rr(g,-648,-788,1316,1596,26);g.fill();g.fillStyle=g.createPattern(WOOD,'repeat');rr(g,-660,-800,1320,1600,24);g.fill();asCover('room_desk',g,-660,-800,1320,1600);/* T022 */g.strokeStyle='rgba(90,55,25,.6)';g.lineWidth=5;g.stroke();
   g.fillStyle='rgba(70,40,15,.35)';rr(g,-230,-770,460,36,18);g.fill();g.save();g.translate(-150,-752);g.fillStyle='#f5d142';g.fillRect(0,-6,250,12);g.fillStyle='#f191b3';g.fillRect(-22,-6,22,12);g.fillStyle='#b9bcc2';g.fillRect(-4,-6,8,12);g.fillStyle='#e8c9a0';g.beginPath();g.moveTo(250,-6);g.lineTo(272,0);g.lineTo(250,6);g.fill();g.fillStyle='#333';g.beginPath();g.moveTo(264,-2.2);g.lineTo(272,0);g.lineTo(264,2.2);g.fill();g.restore();
-  for(const p of C.pieces){if(C.handA&&C.handA.p===p)continue;drawPiece(g,p)}asGuide(g);/* T022 */
+  dsDraw(g);/* T024 */for(const p of C.pieces){if(C.handA&&C.handA.p===p)continue;drawPiece(g,p)}asGuide(g);/* T022 */
   if(C.sel&&!(C.handA&&C.handA.p===C.sel)){const p=C.sel,k=ensureSkin(p);g.save();g.transform(...pm(p));g.strokeStyle='rgba(255,255,255,.95)';g.lineWidth=2.2/z;g.setLineDash([9/z,7/z]);g.lineDashOffset=-NOW/60;g.strokeRect(k.ox-5,k.oy-5,k.c.width+10,k.c.height+10);g.setLineDash([]);g.restore();
     if(C.tool==='hand'){const kp=knobPos(p);g.fillStyle='#fff';g.strokeStyle='#3b2f2a';g.lineWidth=2/z;g.beginPath();g.arc(kp.x,kp.y,14/z,0,TAU);g.fill();g.stroke();g.fillStyle='#3b2f2a';g.font='900 '+(17/z)+'px system-ui';g.textAlign='center';g.textBaseline='middle';g.fillText('↻',kp.x,kp.y+1/z)}}
   drawGuides(g);
@@ -278,7 +278,124 @@ function drawCraft(){const v=C.view,ct=C.ctr||deskCtr(),z=v.z;g.fillStyle='#5b3d
     if(st.k==='fold'&&st.ok){const p=st.p;g.save();g.transform(...pm(p));g.strokeStyle='rgba(255,255,255,.9)';g.lineWidth=2.5/z;g.setLineDash([8/z,6/z]);g.beginPath();g.moveTo(st.res.soft.a.x,st.res.soft.a.y);g.lineTo(st.res.soft.b.x,st.res.soft.b.y);g.stroke();g.setLineDash([]);g.restore()}}
   if(C.tcut){const t=C.tcut;g.save();g.transform(...pm(t.p));drawScissors(g,t.pos.x,t.pos.y,t.ang,.15+.5*Math.abs(Math.sin(t.s*.08)),'#2f7d4f');g.restore()}
   if(C.handA){const h=C.handA,p=h.p;drawPiece(g,p);const out=clamp((h.t-.68)/.32,0,1);drawHand(g,p.x+10,p.y-70-out*out*1300,h.t>.5&&h.t<.68)}
+  dsDrawHeld(g);/* T024 */
   g.restore()}
+
+/* ================= REAL DESK SUPPLIES AND THE PAINTING KIT (T024) =================
+   Settings > Drawing tools: "Real desk" shows supplies on the School Desk; "Quick tools" hides them (the Art box works in both).
+   A crayon box, a pencil cup and a marker tray sit above and below the paper; the painting kit (palette, brushes, palette knife, water cup) sits to the right.
+   Tap one to pick it up: it shows in the Player Hand and the Pencil tool draws with it (it sets the Art box: AB.med, AB.col).
+   Tap the bare desk with the Pencil tool to put it down: it stays where you left it. Saved as craftloft_desksupplies:
+   {out:{id:[x,y,rot]} supplies lying on the desk, held: id in the hand, pal:{a,b,t,paint} the palette, bcol: paint on the brush, dirt:[r,g,b] old paint on a dirty brush, cup:[r,g,b] the water}.
+   To add a supply: one more entry in DS_LIST (kind, medium, colour, home spot). */
+const DS_CR={x:-262,y:-446,w:288,h:118},DS_CUP={x:150,y:-331},DS_TRAY={x:-150,y:318,w:300,h:112},DS_PAL={x:420,y:-150,rx:122,ry:92},DS_REST={x:326,y:8,w:196,h:156},DS_WAT={x:420,y:268,r:52};
+const DS_TIPS={br_round:{k:1},br_flat:{k:1.7,flat:1},br_fine:{k:.35},knife:{k:1.8,flat:1,knife:1}};
+const DSV=Object.assign({out:{},held:null,pal:{a:'#3767bb',b:'#f7d23e',t:.5,paint:'poster'},bcol:null,dirt:null,cup:null},LS.get('desksupplies',{}));
+if(!DSV.out||typeof DSV.out!=='object')DSV.out={};
+if(!DSV.pal||!MEDIUMS[DSV.pal.paint])DSV.pal={a:'#3767bb',b:'#f7d23e',t:.5,paint:'poster'};
+const DS_LIST=[];
+/* a pencil standing in the cup: its back end sits in the cup, the point fans out above it */
+function dsCupHome(i){const r=i*.075,L=92;return{x:DS_CUP.x+i*5+Math.sin(r)*L,y:DS_CUP.y-4-Math.cos(r)*L,r}}
+MCOLS.forEach((c,i)=>DS_LIST.push({id:'crayon_'+i,kind:'crayon',med:'crayon',col:c,name:'crayon',len:96,grp:'cr',home:{x:DS_CR.x+19+i*22.7,y:DS_CR.y+12,r:0}}));
+DS_LIST.push({id:'pencil',kind:'pencil',med:'pencil',col:'#26221f',name:'pencil',len:92,grp:'cup',home:dsCupHome(-6)});
+MCOLS.forEach((c,i)=>DS_LIST.push({id:'cpencil_'+i,kind:'pencil',med:'cpencil',col:c,name:'coloured pencil',len:92,grp:'cup',home:dsCupHome(i-5)}));
+MCOLS.forEach((c,i)=>DS_LIST.push({id:'marker_'+i,kind:'marker',med:'marker',col:c,name:'marker',len:96,grp:'tray',home:{x:DS_TRAY.x+13+i*24.9,y:DS_TRAY.y+9,r:0}}));
+[['br_round','round brush'],['br_flat','flat brush'],['br_fine','fine brush'],['knife','palette knife']].forEach((b,i)=>DS_LIST.push({id:b[0],kind:b[0]==='knife'?'knife':'brush',name:b[1],len:132,grp:'rest',home:{x:DS_REST.x+30+i*45,y:DS_REST.y+12,r:0}}));
+if(DSV.held&&!DS_LIST.some(s=>s.id===DSV.held))DSV.held=null;
+const DS={back:null};
+function dsOn(){return SET.tools==='real'}
+function dsSave(){LS.set('desksupplies',DSV)}
+function dsById(id){return DS_LIST.find(s=>s.id===id)}
+function dsHeld(){return dsOn()&&DSV.held?dsById(DSV.held):null}
+function dsIsBrush(s){return!!s&&(s.kind==='brush'||s.kind==='knife')}
+function dsPalCol(){const P=DSV.pal;return rgbHex(smix(hexRGB(P.a),hexRGB(P.b),P.t))}
+function dsPos(s){const o=DSV.out[s.id];return o?{x:o[0],y:o[1],r:o[2]}:s.home}
+/* the tip-up end of a supply (r = 0 points up the desk); the body runs from (x,y) down along its length */
+function dsTail(s,p){return{x:p.x-Math.sin(p.r)*s.len,y:p.y+Math.cos(p.r)*s.len}}
+/* brush shape and old paint for the stroke being started (null with Quick tools) */
+function dsTip(){const s=dsHeld();return s&&DS_TIPS[s.id]||null}
+function dsDirt(){const s=dsHeld();return dsIsBrush(s)&&DSV.dirt||null}
+function dsStrokeEnd(st){if(st.er||!st.B)return;const s=dsHeld();if(!dsIsBrush(s))return;DSV.bcol=AB.col;if(st.B.picked&&st.B.pick&&blendOn())DSV.dirt=st.B.pick.map(v=>Math.round(v));dsSave()}
+function medSound(m){const M=MEDIUMS[m];return M&&M.sound&&RUBS[M.sound]?M.sound:'pencil'}
+/* draw one supply. Local space: the drawing end is at (0,0), the body runs to (0,len). */
+function dsItem(c,s,loadCol){const L=s.len,col=s.col;c.lineJoin='round';
+  if(s.kind==='crayon'){c.fillStyle=col;c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1.2;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.lineTo(8,16);c.lineTo(8,L);c.lineTo(-8,L);c.lineTo(-8,16);c.closePath();c.fill();c.stroke();c.fillStyle='rgba(255,255,255,.55)';c.fillRect(-8,30,16,46);c.strokeStyle='rgba(0,0,0,.3)';c.strokeRect(-8,30,16,46);c.fillStyle=col;c.fillRect(-8,48,16,10);c.fillStyle='rgba(255,255,255,.25)';c.fillRect(-6,16,3,L-16)}
+  else if(s.kind==='pencil'){const lead=s.med==='pencil'?'#3a3a42':col,body=s.med==='pencil'?'#f5d142':col;c.fillStyle='#e8c9a0';c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.beginPath();c.moveTo(0,0);c.lineTo(4.5,15);c.lineTo(-4.5,15);c.closePath();c.fill();c.stroke();c.fillStyle=lead;c.beginPath();c.moveTo(0,0);c.lineTo(1.9,6);c.lineTo(-1.9,6);c.closePath();c.fill();c.fillStyle=body;c.fillRect(-4.5,15,9,L-15);c.strokeRect(-4.5,15,9,L-15);c.fillStyle='rgba(255,255,255,.3)';c.fillRect(-3,15,2,L-15);if(s.med==='pencil'){c.fillStyle='#b9bcc2';c.fillRect(-4.5,L-13,9,5);c.fillStyle='#f191b3';c.fillRect(-4.5,L-8,9,8);c.strokeRect(-4.5,L-8,9,8)}}
+  else if(s.kind==='marker'){c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1.2;c.fillStyle=col;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.lineTo(5,10);c.lineTo(-5,10);c.closePath();c.fill();c.stroke();rr(c,-9,10,18,34,4);c.fill();c.stroke();c.fillStyle='#f4f1ea';rr(c,-8,44,16,L-44,4);c.fill();c.stroke();c.fillStyle=col;c.fillRect(-8,60,16,8);c.fillStyle='rgba(255,255,255,.3)';c.fillRect(-6,12,3,30)}
+  else if(s.kind==='brush'){const T=DS_TIPS[s.id],bw=T.flat?9:T.k<1?2.6:6,bl=T.flat?18:T.k<1?16:22,pc=loadCol||'#c9b79a';c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.fillStyle=pc;c.beginPath();if(T.flat){c.rect(-bw,0,bw*2,bl)}else{c.moveTo(0,0);c.quadraticCurveTo(bw*1.3,bl*.55,bw*.8,bl);c.lineTo(-bw*.8,bl);c.quadraticCurveTo(-bw*1.3,bl*.55,0,0)}c.fill();c.stroke();c.fillStyle='#b9bcc2';c.fillRect(-Math.max(3.4,bw*.8),bl,Math.max(6.8,bw*1.6),16);c.strokeRect(-Math.max(3.4,bw*.8),bl,Math.max(6.8,bw*1.6),16);c.fillStyle=s.id==='br_flat'?'#2f7d4f':s.id==='br_fine'?'#3767bb':'#d9463e';c.beginPath();c.moveTo(-4,bl+16);c.lineTo(4,bl+16);c.lineTo(2.4,L);c.lineTo(-2.4,L);c.closePath();c.fill();c.stroke()}
+  else{c.strokeStyle='rgba(0,0,0,.4)';c.lineWidth=1;c.fillStyle=loadCol||'#d5dae0';c.beginPath();c.moveTo(0,0);c.lineTo(9,26);c.lineTo(3,56);c.lineTo(-3,56);c.lineTo(-9,26);c.closePath();c.fill();c.stroke();c.fillStyle='#b9bcc2';c.fillRect(-2.5,56,5,14);c.fillStyle='#8b5a3c';rr(c,-6,70,12,L-70,5);c.fill();c.stroke()}}
+function dsLoadCol(s){if(!dsIsBrush(s))return null;if(DSV.held===s.id&&(DSV.bcol||DSV.dirt))return DSV.dirt?rgbCss(smix(hexRGB(AB.col),DSV.dirt,.4)):AB.col;return null}
+/* the desk furniture and every supply that is not in the hand (drawn under the paper) */
+function dsDraw(c){if(!dsOn())return;c.save();c.lineJoin='round';
+  /* crayon box */
+  let B=DS_CR;c.fillStyle='rgba(0,0,0,.22)';rr(c,B.x+5,B.y+7,B.w,B.h,10);c.fill();c.fillStyle='#f0b429';rr(c,B.x,B.y,B.w,B.h,10);c.fill();c.strokeStyle='rgba(90,55,25,.7)';c.lineWidth=3;c.stroke();c.fillStyle='#3a2a1c';rr(c,B.x+8,B.y+6,B.w-16,B.h-12,6);c.fill();
+  /* marker tray */
+  B=DS_TRAY;c.fillStyle='rgba(0,0,0,.22)';rr(c,B.x+5,B.y+7,B.w,B.h,12);c.fill();c.fillStyle='#8fa3b5';rr(c,B.x,B.y,B.w,B.h,12);c.fill();c.strokeStyle='rgba(40,55,70,.7)';c.lineWidth=3;c.stroke();c.fillStyle='#5f7284';rr(c,B.x+7,B.y+5,B.w-14,B.h-10,8);c.fill();
+  /* brush rest */
+  B=DS_REST;c.fillStyle='rgba(0,0,0,.2)';rr(c,B.x+5,B.y+7,B.w,B.h,12);c.fill();c.fillStyle='#e9dcc0';rr(c,B.x,B.y,B.w,B.h,12);c.fill();c.strokeStyle='rgba(90,55,25,.6)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(90,55,25,.25)';c.fillRect(B.x+8,B.y+62,B.w-16,10);
+  /* palette */
+  const P=DS_PAL,pal=DSV.pal;c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(P.x+5,P.y+8,P.rx,P.ry,0,0,TAU);c.fill();c.fillStyle='#d8b07a';c.beginPath();c.ellipse(P.x,P.y,P.rx,P.ry,0,0,TAU);c.fill();c.strokeStyle='rgba(90,55,25,.7)';c.lineWidth=3;c.stroke();c.fillStyle='#5b3d2b';c.beginPath();c.ellipse(P.x-74,P.y+38,17,13,0,0,TAU);c.fill();
+  const blob=(x,y,r,col)=>{c.fillStyle=col;c.beginPath();c.ellipse(x,y,r,r*.8,0,0,TAU);c.fill();c.fillStyle='rgba(255,255,255,.3)';c.beginPath();c.ellipse(x-r*.3,y-r*.3,r*.3,r*.18,-.6,0,TAU);c.fill()};
+  blob(P.x-52,P.y-38,24,pal.a);blob(P.x+8,P.y-52,24,pal.b);blob(P.x+48,P.y+14,38,dsPalCol());c.fillStyle='rgba(60,35,15,.75)';c.font='900 15px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText('Palette',P.x-18,P.y+66);
+  /* water cup */
+  const Wc=DS_WAT;c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.arc(Wc.x+5,Wc.y+8,Wc.r,0,TAU);c.fill();c.fillStyle='#e8eef2';c.beginPath();c.arc(Wc.x,Wc.y,Wc.r,0,TAU);c.fill();c.strokeStyle='rgba(60,80,100,.7)';c.lineWidth=3;c.stroke();c.fillStyle=rgbCss(DSV.cup||[178,220,244]);c.beginPath();c.arc(Wc.x,Wc.y,Wc.r-9,0,TAU);c.fill();c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=2.5;c.beginPath();c.arc(Wc.x-6,Wc.y-6,Wc.r-22,3.4,4.6);c.stroke();c.fillStyle='rgba(30,50,70,.75)';c.fillText('Water',Wc.x,Wc.y+Wc.r+14);
+  /* the supplies: pencils first (they stand behind the cup), then the cup, then everything else */
+  const one=s=>{if(DSV.held===s.id)return;const p=dsPos(s);c.save();c.translate(p.x,p.y);c.rotate(p.r);if(DSV.out[s.id]){c.shadowColor='rgba(0,0,0,.3)';c.shadowBlur=5;c.shadowOffsetY=3}dsItem(c,s,dsLoadCol(s));c.restore()};
+  DS_LIST.forEach(s=>{if(s.grp==='cup'&&!DSV.out[s.id])one(s)});
+  const U=DS_CUP;c.fillStyle='rgba(0,0,0,.22)';rr(c,U.x-50,U.y-22,108,58,12);c.fill();c.fillStyle='#d9463e';rr(c,U.x-54,U.y-28,108,58,12);c.fill();c.strokeStyle='rgba(90,25,20,.7)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(255,255,255,.25)';rr(c,U.x-46,U.y-22,14,46,6);c.fill();
+  DS_LIST.forEach(s=>{if(s.grp!=='cup'||DSV.out[s.id])one(s)});
+  /* front lips, so things look tucked in */
+  B=DS_CR;c.fillStyle='#f0b429';rr(c,B.x,B.y+B.h-38,B.w,38,10);c.fill();c.strokeStyle='rgba(90,55,25,.7)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(60,35,15,.8)';c.font='900 17px system-ui';c.fillText('CRAYONS',B.x+B.w/2,B.y+B.h-18);
+  B=DS_TRAY;c.fillStyle='#8fa3b5';rr(c,B.x,B.y+B.h-30,B.w,30,12);c.fill();c.strokeStyle='rgba(40,55,70,.7)';c.stroke();c.fillStyle='rgba(25,40,55,.8)';c.fillText('MARKERS',B.x+B.w/2,B.y+B.h-14);
+  c.restore()}
+/* the supply in the hand: drawn on top of everything, with the Player Hand holding it */
+function dsDrawHeld(c){const s=dsHeld();if(!s||SCR!=='craft')return;const hp=C.hp||{x:C.view.x+120,y:C.view.y+150},down=!!(C.st&&C.st.k==='draw');
+  c.save();c.translate(hp.x,hp.y);c.rotate(Math.PI+.22);dsItem(c,s,dsLoadCol(s));c.restore();
+  c.save();c.globalAlpha=down?.45:1;drawHand(c,hp.x+12,hp.y-112,down);c.restore()}
+/* what a tap on the bare desk hits: a supply, the palette or the water cup */
+function dsHit(w){const z=C.view.z,near=14+10/z;let best=null,bd=1e9;
+  for(const s of DS_LIST){if(DSV.held===s.id)continue;const p=dsPos(s),d=distSeg(w,p,dsTail(s,p)).d;if(d<bd){bd=d;best=s}}
+  if(best&&bd<near)return{s:best,d:bd};
+  const P=DS_PAL;if(Math.pow((w.x-P.x)/P.rx,2)+Math.pow((w.y-P.y)/P.ry,2)<1)return{pal:1};
+  if(dist(w,DS_WAT)<DS_WAT.r+6)return{cup:1};
+  return null}
+/* how far apart the supplies in a holder are, in screen pixels: too close and the first tap zooms in instead */
+function dsCrowd(s){if(DSV.out[s.id])return 99;const sp={cr:22.7,cup:11,tray:24.9,rest:45}[s.grp];return sp*C.view.z}
+function dsDown(w,gh,t){if(!dsOn()||gh||topPieceAt(w.x,w.y))return false;const h=dsHit(w);
+  if(!h){if(DSV.held&&t==='pencil'){dsPutDown(w);return true}return false}
+  auInit();
+  if(h.pal){paletteDlg();return true}
+  if(h.cup){dsRinse();return true}
+  const s=h.s;if(dsCrowd(s)<27){DS.back={x:C.view.x,y:C.view.y,z:C.view.z};const p=s.home,sp={cr:22.7,cup:11,tray:24.9,rest:45}[s.grp];C.view.z=clamp(32/sp,1,3);C.view.x=clamp(w.x,-560,560);C.view.y=p.y+s.len*.45;toast('Tap the '+s.name+' you want');SFX.tick();return true}
+  dsPick(s);return true}
+function dsPick(s){DSV.held=s.id;delete DSV.out[s.id];
+  if(dsIsBrush(s)){AB.med=s.kind==='knife'?'poster':DSV.pal.paint;AB.col=dsPalCol()}else{AB.med=s.med;AB.col=s.col;}
+  saveAB();dsSave();C.cat='draw';C.tool='pencil';if(DS.back){Object.assign(C.view,DS.back);DS.back=null}renderTabs();SFX.tick();
+  toast(dsIsBrush(s)?'You picked up the '+s.name+'. Tap the palette to mix a colour.':'You picked up a '+s.name+'. Tap the bare desk to put it down.')}
+function dsPutDown(w){const s=dsHeld();if(!s)return;const r=+(rnd(-.5,.5)+(Math.random()<.5?1.57:-1.57)).toFixed(2);DSV.out[s.id]=[Math.round(w.x+Math.sin(r)*s.len/2),Math.round(w.y-Math.cos(r)*s.len/2),r];/* it lies with its middle where you tapped */DSV.held=null;dsSave();SFX.clack();renderChips();toast('You put the '+s.name+' down. It stays there until you pick it up.')}
+/* back in its box (the Art box took over) */
+function dsPutAway(){if(!DSV.held)return;DSV.held=null;dsSave()}
+function dsRinse(){const s=dsHeld();if(!dsIsBrush(s)){toast('The water cup rinses a paintbrush. Pick up a brush first.');return}const old=DSV.dirt||(DSV.bcol?hexRGB(DSV.bcol):null);if(!old){toast('The brush is already clean.');return}
+  DSV.cup=smix(DSV.cup||[178,220,244],old,.35).map(v=>Math.round(v));DSV.dirt=null;DSV.bcol=null;dsSave();SFX.squish();toast('Swish! The brush is clean.')}
+/* the palette: mix two paints (spectral.js), then the mix goes on the brush */
+function paletteDlg(){const P=Object.assign({},DSV.pal),row=(id,cur)=>'<div class="mcols" id="'+id+'">'+MCOLS.map(c=>'<button class="mcol'+(cur===c?' on':'')+'" data-c="'+c+'" style="background:'+c+'" aria-label="colour '+c+'"></button>').join('')+'</div>';
+  dlg('<h2>🎨 Palette</h2><p style="margin:2px 0 6px;font-size:13px">Pick two paints and slide to mix them. The mix goes on your brush.</p><div class="pseg" id="pPaint"><button data-p="poster">🎨 Poster paint</button><button data-p="water">💧 Watercolour</button></div><label class="lb">First paint</label>'+row('pA',P.a)+'<label class="lb">Second paint</label>'+row('pB',P.b)+'<canvas id="pMix" width="280" height="56" style="width:100%;height:56px;border-radius:10px;margin-top:10px"></canvas><input type="range" id="pT" min="0" max="1" step="0.04" value="'+P.t+'" aria-label="How much of the second paint" style="width:100%"><div class="btns"><button class="alt" id="dNo">Close</button><button id="dYes">🖌️ Load the brush</button></div>',d=>{
+    const paint=()=>{d.querySelectorAll('#pPaint button').forEach(b=>b.classList.toggle('on',b.dataset.p===P.paint));d.querySelectorAll('#pA .mcol').forEach(b=>b.classList.toggle('on',b.dataset.c===P.a));d.querySelectorAll('#pB .mcol').forEach(b=>b.classList.toggle('on',b.dataset.c===P.b));
+      const cv2=d.querySelector('#pMix'),x=cv2.getContext('2d'),A=hexRGB(P.a),Bc=hexRGB(P.b);for(let i=0;i<28;i++){x.fillStyle=rgbCss(smix(A,Bc,i/27));x.fillRect(i*10,0,10,56)}const mx=P.t*270+5;x.fillStyle=rgbCss(smix(A,Bc,P.t));x.strokeStyle='#fff';x.lineWidth=4;x.beginPath();x.arc(mx,28,20,0,TAU);x.fill();x.stroke();x.strokeStyle='#3b2f2a';x.lineWidth=1.5;x.beginPath();x.arc(mx,28,22,0,TAU);x.stroke()};
+    d.querySelectorAll('#pPaint button').forEach(b=>b.onclick=()=>{P.paint=b.dataset.p;SFX.tick();paint()});d.querySelectorAll('#pA .mcol').forEach(b=>b.onclick=()=>{P.a=b.dataset.c;SFX.tick();paint()});d.querySelectorAll('#pB .mcol').forEach(b=>b.onclick=()=>{P.b=b.dataset.c;SFX.tick();paint()});d.querySelector('#pT').oninput=e=>{P.t=+e.target.value;paint()};
+    d.querySelector('#dNo').onclick=closeDlg;d.querySelector('#dYes').onclick=()=>{DSV.pal=P;closeDlg();dsLoadBrush()};paint()})}
+function dsLoadBrush(){let s=dsHeld();if(!dsIsBrush(s)){s=dsById('br_round');DSV.held=s.id;delete DSV.out[s.id]}const col=dsPalCol();
+  if(DSV.bcol&&DSV.bcol!==col){const old=hexRGB(DSV.bcol);DSV.dirt=DSV.dirt?smix(DSV.dirt,old,.5).map(v=>Math.round(v)):old}
+  AB.med=s.kind==='knife'?'poster':DSV.pal.paint;AB.col=col;saveAB();dsSave();C.cat='draw';C.tool='pencil';renderTabs();SFX.squish();
+  toast(DSV.dirt?'The brush still has old paint on it. It tints the new colour until you dip it in the water cup.':'Paint is on the '+s.name+'. Paint on the paper.')}
+/* Draw tab chip: jump to the painting kit and back */
+function dsPaintsChip(box){const b=document.createElement('button'),at=C.view.x>250;b.className='chip'+(at?' on':'');b.innerHTML='🖌️<small>'+(at?'Paper':'Paints')+'</small>';b.onclick=()=>{auInit();SFX.tick();if(C.view.x>250)fitDesk();else{C.view.x=420;C.view.y=46;C.view.z=clamp(Math.min((W-14)/300,((C.ctr||deskCtr()).h-8)/650),.35,1.6)}renderChips()};box.append(b)}
+/* S Pen: perfect-freehand (MIT, lib/perfect-freehand.js) smooths the line and its pressure; the recipe's press curve turns pressure into width */
+function drawStart(st,e,t){st.B=t==='pencil'?strokeStart(AB.med,AB.col,st.p.color,dsTip(),dsDirt()):null;if(t==='pencil'&&e&&e.pointerType==='pen'&&!st.snap&&typeof perfectFreehand!=='undefined'){const pr=e.pressure>0?e.pressure:.5;st.pen={pts:[[st.last.x,st.last.y,pr]],n:1};st.pk=pressK(AB.med,pr)}}
+function drawFree(st,l,e){if(!st.pen){drawSeg(st,st.last?[st.last,l]:[l]);return}const P=st.pen;if(!st.last){P.pts=[];P.n=1}P.pts.push([l.x,l.y,e&&e.pressure>0?e.pressure:.5]);if(P.pts.length>=3)penFlush(st,false)}
+function penFlush(st,end){const P=st.pen;if(!P||P.pts.length<2)return;const sp=perfectFreehand.getStrokePoints(P.pts,{size:8,streamline:.4,simulatePressure:false,last:end}),n=end?sp.length:sp.length-1;
+  for(let i=Math.max(1,P.n);i<n;i++){st.pk=pressK(AB.med,sp[i].pressure);drawSeg(st,[{x:sp[i-1].point[0],y:sp[i-1].point[1]},{x:sp[i].point[0],y:sp[i].point[1]}])}P.n=Math.max(P.n,n);if(end)st.pen=null}
+
 /* ================= UI: tabs, chips, screens, input ================= */
 const svg=(d,fill)=>'<svg viewBox="0 0 40 20"><path d="'+d+'" fill="'+(fill||'none')+'" stroke="#3b2f2a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const CATS=[{id:'paper',em:'📄',name:'Paper',tool:'hand'},{id:'hand',em:'✋',name:'Move',tool:'hand'},{id:'draw',em:'✏️',name:'Draw',tool:'pencil'},{id:'cut',em:'✂️',name:'Cut',tool:'regular'},{id:'fold',em:'📃',name:'Fold',tool:'fold'},{id:'stick',em:'🧴',name:'Stick',tool:'gluestick'},{id:'done',em:'🧸',name:'Toy box'}];
@@ -296,7 +413,7 @@ function setHint(t){$('#hint').textContent=t}
 function renderTabs(){const tabs=$('#tabs');tabs.innerHTML='';CATS.forEach(c=>{const b=document.createElement('button');b.className='tab'+(C.cat===c.id?' on':'');b.innerHTML=c.em+'<small>'+c.name+'</small>';b.onclick=()=>{auInit();SFX.tick();if(c.id==='done'){actToyBox();return}C.cat=c.id;C.tool=c.tool;renderTabs()};tabs.append(b)});renderChips()}
 function renderChips(){const box=$('#chips');box.innerHTML='';
   if(C.cat==='paper'){{const S=STOCKS[AB.stock],b=document.createElement('button');b.className='chip';b.innerHTML=S.em+'<small>'+S.name.split(' ')[0]+' ▾</small>';b.onclick=()=>{auInit();SFX.tick();stockDlg()};box.append(b)}/* v1.6b: paper stock */(STOCKS[AB.stock].col?[STOCKS[AB.stock].col]:PAPERS).forEach(col=>{const b=document.createElement('button');b.className='chip sw'+(C.color===col?' on':'');b.style.background=col;b.setAttribute('aria-label','paper');b.onclick=()=>{auInit();placePaper(col);renderChips()};box.append(b)});setHint(HINTS.paper);return}
-  if(C.cat==='draw'){const b=document.createElement('button');b.className='chip';b.innerHTML='🎨<small>Art box</small>';b.onclick=()=>{auInit();SFX.tick();artBoxDlg()};box.append(b)}/* v1.6b */
+  if(C.cat==='draw'){const b=document.createElement('button');b.className='chip';b.innerHTML='🎨<small>Art box</small>';b.onclick=()=>{auInit();SFX.tick();artBoxDlg()};box.append(b);if(dsOn())dsPaintsChip(box)/* T024 */}/* v1.6b */
   (CHIPS[C.cat]||[]).forEach(ch=>{const b=document.createElement('button');const on=ch.tool?C.tool===ch.tool:ch.fold?C.tool==='fold'&&C.foldType===ch.fold:ch.guide?C.guides.some(G=>G.type===ch.guide&&(!ch.shape||G.shape===ch.shape)):false;b.className='chip'+(on?' on':'');b.innerHTML=ch.tool==='pencil'?MEDIA[AB.med].em+'<small style="border-bottom:3px solid '+(MEDIA[AB.med].fixed||AB.col)+'">'+MEDIA[AB.med].name.split(' ')[0]+'</small>':(ch.svg||ch.em)+'<small>'+ch.name+'</small>';
     b.onclick=()=>{auInit();if(ch.tool){C.tool=ch.tool;SFX.tick()}else if(ch.fold){C.tool='fold';C.foldType=ch.fold;SFX.tick()}else if(ch.guide){if(toggleGuide(ch.guide,ch.shape))C.tool='pencil'}else if(ch.act)ch.act();renderChips()};box.append(b)});
   setHint(HINTS[C.tool]||'')}
