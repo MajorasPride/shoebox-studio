@@ -7,9 +7,12 @@
    their object, sized to it (signBox). Walls and solid things stop the camera (three-mesh-bvh, lib/three-mesh-bvh.module.min.js, MIT).
    T033: Make it 3D menu: Standee (default), Puff ('clay'), Fold ('paper'), Two sides ('two', backCanvas); a Mythic Forge model comes later.
    Uses three.js r160 (MIT, lib/three.module.min.js). All art is made in code or taken from the game's own drawings.
+   T025: Physics and Water (physics.js): loose pieces fall, roll, stack and bounce by what they are made of; pick up, put down, throw;
+   puddle, pond, fountain and the watering can; Keep where it landed. Settings > 3D physics turns the engine off.
    This file reads the game's globals (TOWN, TW, toyById, drawToy, sprite, STATION_DRAW, nightK, ...) directly. */
 import * as THREE from './lib/three.module.min.js';
 import { MeshBVH } from './lib/three-mesh-bvh.module.min.js';
+import * as PHY from './physics.js'; /* T025: physics and water. Small; the Rapier engine itself loads from there only when 3D physics is on */
 
 const EYE = 64, SPEED = 175, RAD = 15, CR = 22 /* the camera stays this far off walls and solid things */, THICK = 8 /* cardboard edge */;
 let R = null; /* the running 3D view */
@@ -121,6 +124,13 @@ async function pieceMesh(toy, style, opt = {}) {
   if (toy.med && toy.med.gl) grp.add(sparkles(w, h, style === 'flat' ? 0 : 1));
   return grp;
 }
+/* T025: the ball pieces (clay lump, yarn ball, play ball) are real low-poly balls, so they roll */
+async function ballMesh(toy) {
+  const c = await toyCanvas(toy), r = Math.min(toy.w, toy.h) / 2, grp = new THREE.Group(), m = lam({ map: texOf(c, { near: 1 }), flatShading: true });
+  /* wrap the middle of the drawing round the ball */
+  m.map.repeat.set(.5, .5); m.map.offset.set(.25, .25);
+  grp.add(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 9).translate(0, r, 0), m)); grp.userData.mats = [m]; grp.userData.toy = toy; grp.userData.style = 'ball'; return grp;
+}
 function foldStep(grp, t) { const f = grp.userData.fold; if (!f) return; f.t = t; const e = 1 - Math.pow(1 - Math.min(1, t), 3); f.layers.forEach(m => { m.position.z = m.userData.k * e; }); f.tab.rotation.x = -.5 * e; f.tab.visible = e > .05; }
 /* a puffy pillow over the drawing's shape: height grows with the distance from the edge */
 function puffyGeom(c, w, h, side) {
@@ -179,7 +189,7 @@ function baseScene() {
 }
 function woodPlane(size) { const t = texOf(WOOD, { rep: [size / 256, size / 256] }); const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), lam({ map: t })); m.rotation.x = -Math.PI / 2; return m; }
 async function buildTown() {
-  const sc = baseScene(), col = [], solids = [];
+  const sc = baseScene(), col = [], solids = [], waters = [];
   const wood = woodPlane(6000); wood.position.set(TW.W / 2, -3, TW.H / 2); sc.add(wood);
   /* the town paper: same kraft, grid, tape corners and title as 2D */
   const k = .64, c = cvs(TW.W * k, TW.H * k), x = c.getContext('2d'); x.scale(k, k); x.fillStyle = x.createPattern(KRAFT, 'repeat'); x.fillRect(0, 0, TW.W, TW.H); x.strokeStyle = 'rgba(90,60,30,.13)'; x.lineWidth = 2; x.beginPath(); for (let i = 100; i < TW.W; i += 100) { x.moveTo(i, 0); x.lineTo(i, TW.H); } for (let j = 100; j < TW.H; j += 100) { x.moveTo(0, j); x.lineTo(TW.W, j); } x.stroke();
@@ -196,18 +206,20 @@ async function buildTown() {
   for (const it of TOWN.items) {
     const toy = toyById(it.toy); if (!toy) continue; const s = it.s || 1;
     if (toy.road) { const c2 = await toyCanvas(toy), m = new THREE.Mesh(new THREE.PlaneGeometry(toy.w * s, toy.h * s), lam({ map: texOf(c2), alphaTest: .4, polygonOffset: true, polygonOffsetFactor: -1 })); m.rotation.x = -Math.PI / 2; m.position.set(it.x, .4 + items.length * .002, it.y - toy.h * s / 2); sc.add(m); continue; }
+    /* T025: water pieces lie on the ground as rippling water; ball pieces are balls */
+    const pinfo = PHY.pieceInfo(toy); if (pinfo.water) { waters.push({ it, toy, kind: pinfo.water }); continue; }
     /* T029: only things that move turn to face you (cars, the Drives behavior); everything else keeps its facing (faceStep: Build mode's Turn button, or toward the nearest road) */
     const moving = it.act === 'vehicle', yaw = moving ? 0 : faceStep(it) * Math.PI / 4;
-    const g = await pieceMesh(toy, null, { instant: 1, thick: !moving }); g.scale.set(s * (it.flip < 0 ? -1 : 1), s, s); g.position.set(it.x, 0, it.y); g.rotation.y = yaw;
+    const g = pinfo.ball ? await ballMesh(toy) : await pieceMesh(toy, null, { instant: 1, thick: !moving }); g.scale.set(s * (it.flip < 0 ? -1 : 1), s, s); g.position.set(it.x, 0, it.y); g.rotation.y = yaw;
     const blob = new THREE.Mesh(new THREE.PlaneGeometry(toy.w * s * .9, Math.min(60, toy.w * s * .3)), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.position.set(it.x, .7, it.y);
     sc.add(g, blob); const rec = { it, g, blob, toy, moving, yaw };
     if (it.act === 'light') { const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); gl.scale.set(150 * s, 150 * s, 1); gl.position.set(it.x, toy.h * s * .85, it.y + 4); sc.add(gl); rec.light = gl; }
     if (it.act === 'door') rec.door = 1;
     items.push(rec);
     if (it.act === 'door') { if (toy.w * s > 26) col.push({ x0: it.x - toy.w * s * .42, x1: it.x + toy.w * s * .42, z0: it.y - 12, z1: it.y + 10, it }); } /* doors open and close, so they keep the simple box check */
-    else if (!moving && (it.tb || 'block') !== 'pass' && toy.w * s > 26 && toy.h * s > 26) solids.push({ x: it.x, z: it.y - 2, w: toy.w * s * .84, d: 20, h: toy.h * s, yaw });
+    else if (!moving && !pinfo.ball && (it.tb || 'block') !== 'pass' && toy.w * s > 26 && toy.h * s > 26) solids.push({ x: it.x, z: it.y - 2, w: toy.w * s * .84, d: 20, h: toy.h * s, yaw, it });
   }
-  return { sc, col, items, blds, kind: 'town', bvh: solidBVH(solids), bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
+  return { sc, col, items, blds, solids, waters, kind: 'town', bvh: solidBVH(solids), bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
 }
 /* the studio or the house: the room's 2D background becomes the floor and back wall; stations stand up as cutouts */
 async function buildRoom(R) {
@@ -244,7 +256,7 @@ async function buildRoom(R) {
     const sp = standPt(s); stns.push({ s, at: { x: sp.x, z: sp.y } });
     if (!s.wall && w > 30) solids.push({ x: s.x + ox, z: z - 6, w: w * .84, d: th + 24, h });
   }
-  return { sc, col, items: [], blds: [], stns, kind: R === HOUSE ? 'house' : R.shop ? 'shop' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
+  return { sc, col, items: [], blds: [], stns, solids, waters: [], kind: R === HOUSE ? 'house' : R.shop ? 'shop' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
 }
 
 /* ---------- the view: overlay, controls, loop ---------- */
@@ -252,7 +264,9 @@ function ui() {
   /* a fresh overlay every time: a canvas whose WebGL context was released cannot start a new one */
   let o = document.getElementById('r3d'); if (o) o.remove();
   o = document.createElement('div'); o.id = 'r3d';
-  o.innerHTML = '<canvas id="r3cv"></canvas><div id="r3top"><button id="r3back">◀ Back to 2D</button><b id="r3ttl"></b><button id="r3clk" aria-label="Clock">☀️</button></div><div id="r3stick"><i></i></div><button id="r3act"></button><div id="r3hint">Left thumb: walk · Drag: look around</div><div id="r3fade"></div>';
+  o.innerHTML = '<canvas id="r3cv"></canvas><div id="r3top"><button id="r3back">◀ Back to 2D</button><b id="r3ttl"></b><button id="r3keep" aria-label="Keep the pieces where they landed">📌 Keep</button><button id="r3can" aria-label="Watering can">🚿</button><button id="r3clk" aria-label="Clock">☀️</button></div><button id="r3drop">⬇️ Put down</button><div id="r3stick"><i></i></div><button id="r3act"></button><div id="r3hint">Left thumb: walk · Drag: look around</div><div id="r3fade"></div>';
+  /* T025: the new buttons carry their own style, so index.html's CSS stays as it was */
+  const st = document.createElement('style'); st.textContent = '#r3keep{display:none}#r3keep.on{display:block;background:var(--yellow)}#r3can.on{background:#bfe9ff;box-shadow:0 2px 0 #0006,0 0 0 3px #4aa9dc inset}#r3top button{padding:0 11px}#r3drop{position:absolute;right:16px;bottom:calc(122px + env(safe-area-inset-bottom));display:none;padding:10px 14px;border-radius:22px;background:var(--paper);color:var(--ink);font-weight:900;font-size:14px;box-shadow:0 3px 0 #0006}#r3drop.on{display:block}'; o.append(st);
   document.body.append(o); return o;
 }
 function setTitle() { const t = { town: 'Little Town · 3D', home: 'Shoebox Studio · 3D', house: 'My House · 3D', shop: (SHOPS[SHOP_ID] || SHOPS.supply).name + ' · 3D' }[R.S.kind]; document.getElementById('r3ttl').textContent = t; }
@@ -272,18 +286,52 @@ export async function open(where) {
 }
 async function goScene(where, at) {
   R.busy = true; const f = document.getElementById('r3fade'); f.classList.add('on');
-  if (R.S) disposeScene(R.S.sc);
+  if (R.P) { R.P.dispose(); R.P = null; } if (R.S) disposeScene(R.S.sc);
   R.S = where === 'town' ? await buildTown() : await buildRoom(where === 'house' ? HOUSE : where === 'shop' ? shopRoom() : LOB);
   if (where === 'town') { const h = at || TOWN.hero; R.pos = { x: h.x, z: h.y }; /* face the middle of town, so the first look is the town and not a wall */ R.yaw = at && at.yaw != null ? at.yaw : Math.atan2(-(TW.W / 2 - h.x), -(TW.H * .55 - h.y)); }
   else { const R0 = R.S.R; /* start in the open middle of the floor (or further back if that is where you stood), looking at the back wall */ const h = R0.hero || { x: R0.W / 2, y: 0 }, open = R.S.bounds.z0 + (R.S.bounds.z1 - R.S.bounds.z0) * .5; R.pos = { x: Math.max(R.S.bounds.x0 + 30, Math.min(R.S.bounds.x1 - 30, h.x)), z: Math.max(open, h.y) }; R.yaw = 0; }
+  await startPhysics(R.S);
   R.pitch = -.08; setTitle(); LS.set('where', { s: where === 'town' ? 'town' : where, walk: 1, shop: where === 'shop' ? SHOP_ID : undefined });
   requestAnimationFrame(() => { f.classList.remove('on'); R.busy = false; });
 }
+/* ---------- T025: physics and water for the scene ---------- */
+const physOn = () => typeof SET === 'undefined' || SET.phys !== false;
+const PSFX = { /* made from the game's own sound helpers (nz = noise, tn = tone) */
+  thud(key, v) { try { if (key === 'clay') { nz({ type: 'lowpass', f: 170, d: .2, g: .8 * v }); tn({ f: 90, f2: 55, d: .16, g: .3 * v }); } else if (key === 'paper' || key === 'card') nz({ f: 4200, q: .8, d: .05, g: .1 * v }); else if (key === 'yarn' || key === 'felt') nz({ type: 'lowpass', f: 420, d: .12, g: .28 * v }); else if (key === 'rubber') tn({ f: 260, f2: 150, d: .1, g: .3 * v }); else { nz({ type: 'lowpass', f: 1100, d: .1, g: .45 * v }); } } catch (e) { } },
+  splash(p) { try { nz({ f: 1700, q: .6, d: .28, g: Math.min(.5, .12 * p) }); nz({ type: 'lowpass', f: 520, d: .2, g: Math.min(.4, .1 * p) }); } catch (e) { } },
+  drip() { try { tn({ f: 1300 + Math.random() * 500, f2: 2300, d: .04, g: .035 }); } catch (e) { } }
+};
+async function startPhysics(S) {
+  let eng = false; S.freed = new Set();
+  if (physOn()) { try { await PHY.loadEngine(); eng = true; } catch (e) { console.warn(e); toast('3D physics could not load, so things stay still this time.'); } }
+  const P = R.P = PHY.create(S, { physics: eng, onFree: freeRec, sfx: PSFX });
+  for (const r of S.items) { const still = r.moving || r.door || r.light; if (!still) { const b = P.addPiece(r); if (b && !b.fixed) r.dyn = 1; } }
+  if (eng) for (const s of S.solids) if (s.it && !S.items.some(r => r.it === s.it && r.body)) P.addFixed(s);
+  for (const w of S.waters) P.addWater(w, w.kind);
+  /* the watering can, shown bottom right while it is out */
+  const can = new THREE.Group(), cm = lam({ color: 0x58b7a6, flatShading: true }); can.add(new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.6, 8, 8), cm));
+  const sp = new THREE.Mesh(new THREE.CylinderGeometry(.9, 1.3, 9, 6), cm); sp.rotation.x = -1.1; sp.position.set(0, 1.5, -6.5); const rose = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 1, 1.6, 8), cm); rose.rotation.x = -1.1; rose.position.set(0, 3.8, -10.8);
+  const hd = new THREE.Mesh(new THREE.TorusGeometry(3.4, .7, 4, 8, Math.PI), cm); hd.rotation.set(0, Math.PI / 2, -Math.PI / 2); hd.position.set(0, 0, 4.6); can.add(sp, rose, hd); can.visible = false; S.sc.add(can); S.can = can;
+  syncPhysUI();
+}
+/* a piece that was picked up or knocked over no longer blocks the way where it used to stand */
+function freeRec(rec) { const S = R && R.S; if (!S || S.freed.has(rec.it)) return; S.freed.add(rec.it); S.bvh = solidBVH(S.solids.filter(o => !o.it || !S.freed.has(o.it))); syncPhysUI(); }
+function syncPhysUI() {
+  const S = R.S, P = R.P, k = document.getElementById('r3keep'), c = document.getElementById('r3can'), d = document.getElementById('r3drop'); if (!k) return;
+  k.classList.toggle('on', !!(S && S.kind === 'town' && S.freed && S.freed.size)); c.classList.toggle('on', !!(P && P.can)); d.classList.toggle('on', !!(P && P.held)); if (S && S.can) S.can.visible = !!(P && P.can);
+}
+/* Keep where it landed: only this writes physics positions into the saved town */
+function keepLanded() {
+  const S = R.S, P = R.P; if (!S || !P || S.kind !== 'town') return; let n = 0; const b = S.bounds;
+  for (const body of P.bodies) { if (!body.moved || body === P.held) continue; const it = body.rec.it; it.x = Math.round(Math.max(b.x0, Math.min(b.x1, body.pos.x))); it.y = Math.round(Math.max(b.z0, Math.min(b.z1, body.pos.z))); body.home = { x: it.x, z: it.y }; body.moved = false; body.kept = 1; n++; }
+  S.freed.clear(); LS.set('town', TOWN); syncPhysUI(); toast(n ? 'Kept: ' + (n === 1 ? '1 piece stays where it landed' : n + ' pieces stay where they landed') : 'Nothing has moved');
+}
+function setCan(on) { if (!R.P) return; R.P.setCan(on); syncPhysUI(); if (on) toast('Watering can out: aim and it pours. Tap 🚿 again to put it away.'); }
 function disposeScene(sc) { sc.traverse(o => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) (Array.isArray(m) ? m : [m]).forEach(x => { if (x.map && x.map !== GLOW && x.map !== BLOB && x.map !== SPARK) x.map.dispose(); x.dispose(); }); }); }
 export function close(toScreen) {
   if (!R) return; cancelAnimationFrame(R.raf); const kind = R.S && R.S.kind, p = R.pos;
   if (kind === 'town') { TOWN.hero.x = p.x; TOWN.hero.y = p.z; LS.set('town', TOWN); } else if (kind === 'house') { HOUSE.hero = { x: p.x, y: p.z }; LS.set('househero', HOUSE.hero); } else if (kind === 'shop') { const r = R.S.R; r.hero = { x: p.x, y: p.z }; LS.set(r.key, r.hero); } else if (kind === 'home') { LOB.hero = { x: p.x, y: p.z }; LS.set('lobby', LOB.hero); }
-  removeEventListener('resize', R.fit); R.unbind && R.unbind(); if (R.S) disposeScene(R.S.sc); R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch (e) { }
+  removeEventListener('resize', R.fit); R.unbind && R.unbind(); if (R.P) { R.P.dispose(); R.P = null; } if (R.S) disposeScene(R.S.sc); R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch (e) { }
   document.getElementById('r3d').classList.remove('on'); R = null; OVL = null; setVol && setVol();
   const scr = toScreen || (kind === 'town' ? 'town' : kind === 'house' ? 'house' : kind === 'shop' ? 'shop' : 'home');
   if (scr === 'town') { go('town'); ST.walk = true; ST.cam.x = TOWN.hero.x - W / 2 / ST.z; ST.cam.y = TOWN.hero.y - H * .45 / ST.z; buildStageUI(); LS.set('where', { s: 'town', walk: 1 }); }
@@ -301,15 +349,20 @@ function bindControls(o) {
   const lm = e => { const L = R.look; if (!L || L.id !== e.pointerId) return; const dx = e.clientX - L.x, dy = e.clientY - L.y; L.moved += Math.abs(dx) + Math.abs(dy); L.x = e.clientX; L.y = e.clientY; R.yaw -= dx * .0062; R.pitch = Math.max(-1.1, Math.min(.9, R.pitch - dy * .005)); };
   const lu = e => { const L = R.look; if (!L || L.id !== e.pointerId) return; R.look = null; if (L.moved < 8 && performance.now() - L.t < 350 && R.near) act(); };
   cvx.addEventListener('pointerdown', ld); cvx.addEventListener('pointermove', lm); cvx.addEventListener('pointerup', lu); cvx.addEventListener('pointercancel', lu);
-  const kd = e => { R.keys[e.key.toLowerCase()] = 1; if ((e.key === 'Enter' || e.key === 'e') && R.near) act(); if (e.key === 'Escape') close(); }, ku = e => { R.keys[e.key.toLowerCase()] = 0; };
+  const kd = e => { R.keys[e.key.toLowerCase()] = 1; if ((e.key === 'Enter' || e.key === 'e') && R.near) act(); if (e.key === 'f' && R.P && R.P.held) { R.P.drop(); syncPhysUI(); } if (e.key === 'c' && R.P) setCan(!R.P.can); if (e.key === 'Escape') close(); }, ku = e => { R.keys[e.key.toLowerCase()] = 0; };
   addEventListener('keydown', kd); addEventListener('keyup', ku);
   o.querySelector('#r3back').onclick = () => { SFX.tick(); close(); };
   o.querySelector('#r3act').onclick = () => act();
+  o.querySelector('#r3drop').onclick = () => { if (R.P && R.P.held) { SFX.tick(); R.P.drop(); syncPhysUI(); } };
+  o.querySelector('#r3can').onclick = () => { SFX.tick(); if (R.P) setCan(!R.P.can); };
+  o.querySelector('#r3keep').onclick = () => { SFX.tick(); keepLanded(); };
   o.querySelector('#r3clk').onclick = () => { SFX.tick(); CLK.m = nightK() > .5 ? 600 : 1320; LS.set('clock', CLK); };
   R.unbind = () => { removeEventListener('keydown', kd); removeEventListener('keyup', ku); };
 }
 function act() {
   const n = R.near; if (!n || R.busy) return; SFX.tick();
+  if (n.held) { const cp = Math.cos(R.pitch); R.P.toss({ x: -Math.sin(R.yaw) * cp, y: Math.sin(R.pitch), z: -Math.cos(R.yaw) * cp }); syncPhysUI(); return; }
+  if (n.pick) { R.P.pick(n.pick); syncPhysUI(); return; }
   if (n.bld) { const b = BLD[n.bld]; if (b.shop) SHOP_ID = b.shop; goScene(b.scr); return; }
   if (n.door) { n.door.it.open = !n.door.it.open; LS.set('town', TOWN); return; }
   if (n.stn) { const s = n.stn.s; if (s.id === 'door' || s.id === 'hdoor' || s.out) { const k = s.out || (s.id === 'door' ? 'studio' : 'house'), b = TOWN[k], d = BLD[k].door; goScene('town', { x: b.x + d.x, y: b.y + d.y + 40, yaw: Math.PI }); return; }
@@ -344,9 +397,12 @@ function loop(ts) {
   const sy = Math.sin(R.yaw), cy = Math.cos(R.yaw), p = R.pos; if (ml > .05 && !R.busy) { p.x += (mx * cy + mz * sy) * SPEED * dt; p.z += (-mx * sy + mz * cy) * SPEED * dt; R.bob = (R.bob || 0) + dt * 9 * Math.min(1, ml); } collide(p);
   /* the world keeps living: cars drive, the clock runs (clkTick runs in the game's frame) */
   if (S.kind === 'town') { TOWN.hero.x = p.x; TOWN.hero.y = p.z; try { townActs(dt); } catch (e) { } }
+  if (R.P) R.P.step(dt, { pos: p, yaw: R.yaw, pitch: R.pitch, eye: EYE, moving: ml > .05 && !R.busy });
   const { c, k } = skyCols(); R.renderer.setClearColor(c); S.sc.fog.color.copy(c); S.sc.userData.L.hemi.intensity = 1.5 - k * 1.0; S.sc.userData.L.sun.intensity = 1.6 * (1 - k) + .1; S.sc.userData.L.hemi.color.setHex(k > .5 ? 0x8fa0ff : 0xffffff);
   for (const r of S.items) {
-    r.g.position.set(r.it.x, 0, r.it.y); r.blob.position.set(r.it.x, .7, r.it.y); const s = r.it.s || 1; r.g.scale.x = s * (r.it.flip < 0 ? -1 : 1);
+    const s = r.it.s || 1; r.g.scale.x = s * (r.it.flip < 0 ? -1 : 1);
+    if (r.dyn) { /* T025: physics places it */ if (r.g.userData.glow) r.g.userData.mats.forEach(m => { m.emissiveIntensity = k * 1.1; }); continue; }
+    r.g.position.set(r.it.x, 0, r.it.y); r.blob.position.set(r.it.x, .7, r.it.y);
     if (r.door) r.g.rotation.y = r.yaw + (r.it.open ? -1.25 : 0);
     else if (r.moving && r.g.userData.style === 'flat') r.g.rotation.y = Math.atan2(p.x - r.it.x, p.z - r.it.y); /* T029: only moving things turn to face you */
     else r.g.rotation.y = r.yaw;
@@ -360,12 +416,20 @@ function loop(ts) {
   if (S.kind === 'town') { for (const b of S.blds) { const d = Math.hypot(p.x - b.userData.door.x, p.z - b.userData.door.z); if (d < 70 && d < bd) { bd = d; near = { bld: b.userData.kind, txt: '🚪 Go into ' + BLD[b.userData.kind].name }; } }
     for (const r of S.items) if (r.door) { const d = Math.hypot(p.x - r.it.x, p.z - r.it.y); if (d < 60 && d < bd) { bd = d; near = { door: r, txt: r.it.open ? '🚪 Close' : '🚪 Open' }; } } }
   else for (const n of S.stns) { const d = Math.hypot(p.x - n.at.x, p.z - n.at.z); if (d < 64 && d < bd) { bd = d; const s = n.s; near = { stn: n, txt: s.soon ? '🔒 ' + s.name + ' (soon)' : (s.id === 'door' || s.id === 'hdoor' || s.out ? '🚪 ' : '👉 ') + (s.verb || s.name) }; } }
+  /* T025: a loose piece close in front of you can be picked up; a held one can be thrown */
+  if (R.P && R.P.held) near = { held: R.P.held, txt: '🤾 Throw ' + R.P.held.name };
+  else if (R.P && (!near || bd > 34)) { const b = R.P.nearest(p, R.yaw); if (b) near = { pick: b, txt: '✋ Pick up ' + b.name }; }
   if ((near && near.txt) !== (R.near && R.near.txt)) { const b = document.getElementById('r3act'); b.textContent = near ? near.txt : ''; b.classList.toggle('on', !!near); }
   R.near = near;
   /* camera */
   const bob = ml > .05 ? Math.sin(R.bob) * 1.6 : 0; R.cam.position.set(p.x, EYE + bob, p.z); R.cam.rotation.order = 'YXZ'; R.cam.rotation.set(R.pitch, R.yaw, 0);
   document.getElementById('r3clk').textContent = k > .5 ? '🌙' : '☀️';
+  if (S.can && S.can.visible) { const cp = Math.cos(R.pitch), fx = -Math.sin(R.yaw) * cp, fz = -Math.cos(R.yaw) * cp, rx = Math.cos(R.yaw), rz = -Math.sin(R.yaw); S.can.position.set(p.x + fx * 24 + rx * 11, EYE - 9 + Math.sin(R.pitch) * 24, p.z + fz * 24 + rz * 11); S.can.rotation.order = 'YXZ'; S.can.rotation.set(R.pitch - .35, R.yaw, 0); }
   R.renderer.render(S.sc, R.cam);
+  /* T025: watch the frame rate (logged every 5 s); when it stays under 26 the water ripples are turned down, and back up when it recovers */
+  if (dt > 0) { R.fps = R.fps ? R.fps * .95 + (1 / dt) * .05 : 1 / dt; R.fT = (R.fT || 0) + dt; R.lowT = R.fps < 26 ? (R.lowT || 0) + dt : 0; R.okT = R.fps > 40 ? (R.okT || 0) + dt : 0;
+    if (R.P) { if (R.lowT > 2 && R.P.q < 2) { R.P.q++; R.lowT = 0; } else if (R.okT > 6 && R.P.q > 0) { R.P.q--; R.okT = 0; } }
+    if (R.fT >= 5) { R.fT = 0; console.log('[Retro 3D] ' + Math.round(R.fps) + ' fps, ' + (R.P && R.P.on ? R.P.bodies.length + ' bodies (' + R.P.awake + ' moving), ' : 'physics off, ') + 'water detail ' + (R.P ? 2 - R.P.q : '-')); } }
 }
 
 /* ---------- Make it 3D preview (a spinning piece in a small canvas) ---------- */
@@ -387,3 +451,4 @@ export async function preview(canvas, toy, style) {
 export function forget(id) { TOYC.delete(id); for (const k of [...TOYC.keys()]) if (typeof k === 'string' && k.startsWith('back:' + id + ':')) TOYC.delete(k); }
 /* for the Playwright tests: the live view's state (position, scene, what's near) */
 export function _state() { return R; }
+export const _phy = PHY;

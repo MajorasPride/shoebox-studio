@@ -555,6 +555,25 @@ $('#ovlSave').onclick=()=>{auInit();SFX.tick();consoleSaveDlg()};
 /* The 3D code lives in r3d.js and three.js (lib/), loaded only the first time you open 3D, so 2D stays as light as before. */
 var R3=null,M3STOP=null;
 function r3dLoad(){return R3?Promise.resolve(R3):import('./r3d.js').then(m=>(R3=m))}
+/* T025 Physics and Water: six built-in Toy Box pieces for Retro 3D. Three to play with (a clay lump, a yarn ball, a play ball: real balls in 3D,
+   each with its own weight and bounce) and three water pieces (a puddle, a pond, a fountain: rippling water in 3D, a flat picture in 2D).
+   physics.js knows them by id (PHYS_PIECES). They are added to every toy box once, like the showcase pieces; nothing a player made is changed. */
+function mkPhysToys(){const mk=(key,name,w,h,fn)=>{const c=mkCanvas(w,h);fn(c._x,w,h);return{id:'phys_'+key,name,w,h,beh:'scenery',act:'none',starter:true,phys3d:1,parts:[{src:c.toDataURL(),x:0,y:0,w,h,parent:-1,px:0,py:0,z:0}]}};
+  const ball=(x,w,col,hi)=>{const r=w/2;x.fillStyle=col;x.beginPath();x.arc(r,r,r-1,0,TAU);x.fill();x.fillStyle=hi;x.beginPath();x.arc(r*.72,r*.66,r*.34,0,TAU);x.fill()};
+  const pool=(x,w,h,rim)=>{x.save();x.translate(w/2,h/2);x.scale(1,h/w);if(rim){x.fillStyle='#b08850';x.beginPath();x.arc(0,0,w/2-1,0,TAU);x.fill();x.fillStyle='#c9a46a';x.beginPath();x.arc(0,0,w/2-5,0,TAU);x.fill()}
+    x.fillStyle='#5cb8e6';x.beginPath();const R0=w/2-(rim?13:2);for(let i=0;i<=48;i++){const a=i/48*TAU,r=R0*(rim?1:1-.1*(Math.sin(a*3+1)*.5+.5)-.05*(Math.sin(a*5)*.5+.5));x.lineTo(Math.cos(a)*r,Math.sin(a)*r)}x.closePath();x.fill();
+    x.strokeStyle='rgba(255,255,255,.6)';x.lineWidth=3;x.lineCap='round';[[-.25,-.2,.3],[.2,.15,.22],[-.05,.3,.16]].forEach(q=>{x.beginPath();x.arc(q[0]*R0,q[1]*R0,q[2]*R0,3.5,5)
+;x.stroke()});x.restore()};
+  return[
+    mk('clay','Clay lump',44,44,(x,w)=>{ball(x,w,'#b9623f','rgba(255,220,190,.35)');x.fillStyle='rgba(70,30,15,.25)';[[14,28,4],[29,31,3],[25,14,2.5]].forEach(q=>{x.beginPath();x.arc(q[0],q[1],q[2],0,TAU);x.fill()})}),
+    mk('yarn','Yarn ball',46,46,(x,w)=>{ball(x,w,'#e77fa6','rgba(255,255,255,.25)');x.strokeStyle='rgba(150,40,90,.55)';x.lineWidth=2;x.save();x.beginPath();x.arc(w/2,w/2,w/2-1,0,TAU);x.clip();for(let i=-3;i<=3;i++){x.beginPath();x.ellipse(w/2,w/2+i*7,w/2+4,9,.5,0,TAU);x.stroke();x.beginPath();x.ellipse(w/2+i*7,w/2,9,w/2+4,.5,0,TAU);x.stroke()}x.restore()}),
+    mk('ball','Play ball',40,40,(x,w)=>{ball(x,w,'#f4f0e6','rgba(255,255,255,.5)');x.save();x.beginPath();x.arc(w/2,w/2,w/2-1,0,TAU);x.clip();x.fillStyle='#e8443a';x.fillRect(0,w*.36,w,w*.28);x.fillStyle='#3d7fd9';x.fillRect(0,0,w,w*.14);x.fillRect(0,w*.86,w,w*.14);x.restore()}),
+    mk('puddle','Puddle',170,100,(x,w,h)=>pool(x,w,h,0)),
+    mk('pond','Pond',280,190,(x,w,h)=>pool(x,w,h,1)),
+    mk('fountain','Fountain',190,150,(x,w,h)=>{pool(x,w,h,1);x.fillStyle='#d8c7a6';x.beginPath();x.ellipse(w/2,h/2,16,11,0,0,TAU);x.fill();x.fillStyle='#bfe9ff';x.beginPath();x.ellipse(w/2,h/2,8,5.5,0,0,TAU);x.fill();x.fillStyle='rgba(255,255,255,.85)';for(let i=0;i<8;i++){const a=i/8*TAU;x.beginPath();x.arc(w/2+Math.cos(a)*28,h/2+Math.sin(a)*19,2.5,0,TAU);x.fill()}})
+  ]}
+function ensurePhysToys(){if(['clay','yarn','ball','puddle','pond','fountain'].every(k=>toyById('phys_'+k)))return;/* already there: nothing is drawn at start-up */let add=false;mkPhysToys().forEach(t=>{if(!toyById(t.id)){TOYS.push(t);add=true}});if(add)saveToys()}
+ensurePhysToys();
 function open3D(where){if(OVL)return;auInit();nbClose();closeDlg();OVL='r3d';setVol();$('#lobGo').style.display='none';toast('Opening Retro 3D…');
   r3dLoad().then(m=>m.open(where)).then(ok=>{if(ok===false){OVL=null;return}try{history.pushState({sbsTool:'r3d'},'')}catch(e){}}).catch(e=>{console.warn(e);OVL=null;setVol();toast('Retro 3D could not load. Check the connection and try again.')})}
 /* Make it 3D (T033): every piece stands up in Retro 3D as a thick cardboard standee with no extra steps. The menu turns it into more 3D:

@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033), Creator Mode (T034) and the Medium engine with the file split (T024) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033), Creator Mode (T034), Physics and Water (T025) and the Medium engine with the file split (T024) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -28,6 +28,47 @@ _Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture exam
 - Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
 - Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
+
+## Physics and Water (built Nov 13, 2026 by Fable, ticket T025; on `dev` only, not live)
+In Retro 3D things now fall, roll, stack and bounce with a weight that fits what they are made of, and there is water that ripples, splashes and makes paper soggy. 2D is unchanged and never loads any of it.
+
+### The files
+- **`physics.js`** (new, an ES module): everything for physics and water. `r3d.js` imports it, so it loads only when 3D opens.
+- **`lib/rapier3d-compat/rapier.es.js`** (new): the Rapier physics engine, version 0.14.0, pinned, unchanged (about 2 MB, engine and WebAssembly in one file). `physics.js` loads it (`loadEngine`) only when a 3D scene opens **and** Settings > 3D physics is on. If it cannot load, a toast says so and 3D carries on without physics.
+- **`r3d.js`**: `startPhysics` (called from `goScene`), `freeRec`, `keepLanded`, `setCan`, `ballMesh`, the new buttons in `ui()` (their CSS is added from `r3d.js`, so `index.html` is untouched), and a few lines in `loop`, `act`, `buildTown`, `buildRoom` and `close`.
+- **`stations.js`**: `mkPhysToys` / `ensurePhysToys` (the six new Toy Box pieces), next to `r3dLoad`.
+- **`core.js`**: the Settings row "3D physics" (`SET.phys`, on unless turned off) and "Bring back starter pieces" also brings these six back.
+
+### How it works
+- **`MATERIAL_PHYS`** (physics.js) is the one table: `density`, `bounce`, `friction`, `drag`, `spin`, `grav` (less than 1 = floats down), `soak` (how soggy water makes it), `floats`, `flutter`. Rows: paper, card, cardboard, clay, yarn, felt, rubber, plastic.
+- **`physKey(toy)`** picks the row: a built-in physics piece by its id (`PHYS_PIECES`), else `toy.phys`, else a medium tag in `MEDIUM_PHYS` (yarn, felt, clay), else Make it 3D Puff (`toy.m3d==='clay'`) = clay, else glitter = card, else the paper stock through `STOCK_PHYS` (construction, sketch, lined = paper; cardstock = card; cardboard and kraft = cardboard), else cardboard for built-in pieces and paper for the player's own. The medium recipes from T024 are only read, not changed.
+- **To add a material:** one row in `MATERIAL_PHYS` and one line in `MEDIUM_PHYS` or `STOCK_PHYS` (or set `toy.phys` on a piece).
+- **Bodies** (`addPiece`): every town piece that is not a road, a car, a door or a street light gets a body, asleep until something touches it. Shape: a thin cardboard box for a standee and Two sides (a little thicker than it looks, so standees stand and blocks stack), a deeper box for Fold, a simple hull round the pillow for Puff, a ball for the ball pieces. At most 60 moving bodies per scene (`cfg.maxBodies`); any more are fixed. Bodies further than 1100 px from you are put to sleep.
+- **Fixed things:** the ground, the shoebox walls, buildings, stations, street lights and doors, from the same `solids` list the camera uses (T029). Rooms get their walls and stations too (there are no loose pieces in rooms yet).
+- **Sizes:** the game works in pixels, Rapier in metres; `K` (50 px = 1 m) converts. One physics step per frame, as long as the frame took (capped at 1/30 s).
+- **Pick up, put down, throw:** `P.nearest` finds a loose piece (165 px or smaller, within 92 px, in front of you); the action button says "Pick up". Held, it rides in front of you (`P.pick`); the action button throws (`P.toss`), "Put down" drops (`P.drop`). Look down while holding a flat piece and it lies flat, so you can lay it on another one. Keys on a PC: E pick up or throw, F put down, C watering can.
+- **The camera** still stops at walls with the BVH. When a piece is first picked up or knocked over, `freeRec` rebuilds the BVH without it, so it leaves no invisible wall behind. You walk through loose pieces on the ground; you do not push them with your body.
+- **Saved spots:** physics never writes to the saved town. Moved pieces stay where they landed until you leave 3D; the **Keep** button (top bar, shown once something has moved) writes the new x and y into `TOWN.items` (`keepLanded`). A piece that was lying flat stands up again next time.
+- **Water** (`addWater`): three Toy Box pieces, **Puddle** (shallow), **Pond** and **Fountain** (in a low cardboard tray, with a jet for the fountain). In 2D they are flat pictures. In 3D each is a grid of heights (a height field, no fluid simulation) that ripples when something lands in it, when you wade through it, or when watering-can drops hit it. Drops are one pool of 160 particles (`P.drops`) shared by the can, splashes and fountains.
+- **Watering can:** the can button in the top bar; while it is out, water pours where you aim.
+- **Soggy paper** (`wet`, `look`, `dryStep`): a piece whose material has `soak` goes darker, droops (shorter) and gets slower and heavier when it sits in water or is hit by can drops; it dries back after `cfg.dry` seconds (60) once it is out of the water.
+- **Float or sink:** in the pond and fountain, materials with `floats` are pushed up (lighter ones ride higher); clay sinks.
+- **Speed:** `loop` keeps a running frame rate (`R.fps`) and logs it to the console every 5 s ("[Retro 3D] 41 fps, 9 bodies (3 moving), water detail 2"). Under 26 fps for 2 s, water detail steps down (`P.q`: ripples worked out every second frame, then every third; fountains spray less); it steps back up after 6 s above 40.
+- **Sounds:** made from the game's own `nz` and `tn` helpers (`PSFX` in r3d.js): clay thuds, paper whispers, yarn is soft, a splash, drips.
+
+### Choices made
+- **Rapier, not cannon-es.** Rapier ran in every test here, so the cannon-es fallback was not written. If Rapier will not load on the real phone or inside the Claude preview (some viewers block WebAssembly), the toast "3D physics could not load" shows and the fix is a cannon-es version of `create` / `addPiece` in physics.js.
+- **Six new pieces in every Toy Box** (three balls, three water pieces), added once like the showcase pieces. There was no clay or yarn piece to drop otherwise: the Medium engine has no clay or yarn medium yet (T041). Nothing a player made is changed.
+- **Balls are real 3D balls**, not standees, so they roll.
+- **You carry and throw; you do not bump.** Walking into a tree does not knock it over; a thrown ball can.
+- **Water sits on the ground in a tray** rather than in a hole, because the town floor is one flat sheet.
+- **Pouring on dry ground does nothing yet** (no new puddles from the can).
+- **Throw strength** is nearly the same for everything; the air stops paper at once and clay lobs.
+
+### Tests run
+Playwright, `t025.js` (in the T025 Drive folder), 28 checks at 384 x 824 touch and the same 28 at 1920 x 1080: a save made by the real v1.5.2 copy loads with its toys and town unchanged; 2D loads no 3D or physics file; the Settings switch; materials and shapes; paper floats down (about 2.5 s from head height, clay about 0.65 s); clay does not bounce; yarn bounces a little, the play ball a lot; three blocks stack and stay; Pick up, Throw and Put down with the real buttons; the saved town is not changed by physics; Keep saves the new spots; the can pours and the puddle ripples; paper goes soggy and dries; clay sinks and yarn and the ball float; the fountain runs; back to 2D; the studio in 3D; physics off loads no engine and 3D and water still work; no page errors. 28/28 both sizes.
+- **Frame rate:** about 40 fps at phone size with software rendering in the test machine (no graphics chip), so the real S23 Ultra should be well above 30. At 1920 x 1080 the same software rendering gave about 21 fps and the water detail stepped down as designed.
+- **Not checked:** a real phone; the Claude preview's frame (whether it lets the engine start); sound by ear; the older T020 to T024 check files (they are on the owner's PC, not in this run), though every screen the T025 checks pass through still works.
 
 ## Medium engine, real desk and the file split (built Nov 13, 2026 by Fable, ticket T024; on `dev` only, not live)
 Three things in one order: the game is split into files, every art medium is a recipe with paint that really mixes, and the School Desk has real supplies and a painting kit.
@@ -290,10 +331,11 @@ Since T024 the code is in `core.js`, `mediums.js`, `desk.js`, `classes.js`, `tow
 
 ## Next steps
 - Owner plays v1.6 on the phone (live site) and says what to change. Most worth a look: Retro 3D on the real phone (speed, joystick feel), the art mediums at the School Desk, the Handy Notebook while walking.
-- Medium engine (T024): built on `dev`. Owner tries the Real desk, the palette and paint mixing on the phone with the S Pen. Next in the lane: Physics and Water (T025).
+- Medium engine (T024): built on `dev`. Owner tries the Real desk, the palette and paint mixing on the phone with the S Pen. 
+- Physics and Water (T025): built on `dev`. Owner tries it in Retro 3D on the phone: drop and throw the three balls, stack blocks, the puddle, pond, fountain and watering can. Next in the lane: Toy Life wobble (T026).
 - VHS spot (T020), picture examples (T021) and Art Swap (T022): built on `dev`, waiting for the owner's look on the private preview before they go live.
 - Art Swap: when he says "art pack ready", commit his pack as `art/default-pack.json`.
-- 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows), real 3D water and physics (from the plan doc).
+- 3D ideas not built yet: Make a Level in 3D, the pet following you in 3D, glow-pen lines glowing on their own (now the whole piece glows). (3D water and physics: built, T025.)
 - Answer the house questions, then build the first real house feature (suggested: show crafted pieces on the Display Shelf and the decoration spot, since the Toy Box already holds them).
 - Pet beds: let the companion nap in its bed.
 - Book nooks on the bookshelf.

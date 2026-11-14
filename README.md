@@ -8,7 +8,7 @@ What's in it (v1.6):
 - **Little Town**, a living tabletop town with day and night: cars drive the roads, street lights and windows glow at night, doors open. Your house and the studio stand in town.
 - **The School Desk**: paper in 11 stocks (sketch, watercolour, lined notebook, cardboard, kraft, black, tracing, glitter, glow and more), 12 art mediums (pencils, coloured pencils, markers, crayons, watercolour, poster paint, charcoal, chalk and oil pastels, gel, glitter and glow pens), cut, fold, stick and flip paper over to draw on the back.
 - **Handy Notebook**: sketch while you walk around town, then turn a page into a sticker.
-- **Retro 3D**: walk through Little Town, the studio and your house in first person (thumb joystick, drag to look). **Make it 3D** turns a drawing into a papercraft or puffy clay piece.
+- **Retro 3D**: walk through Little Town, the studio and your house in first person (thumb joystick, drag to look). **Make it 3D** turns a drawing into a papercraft or puffy clay piece. **Physics and Water** (on `dev`): pieces fall, roll, stack and bounce by what they are made of; pick up and throw; a puddle, a pond, a fountain and a watering can; paper goes soggy and dries.
 - **Make a Level**, the **Toy Box** (search, tags, medium filter, export), the **Projector** for flipbooks, the **Pixel UI Kit**, and Art Class lessons.
 
 **Play it:** https://majoraspride.github.io/shoebox-studio/
@@ -20,7 +20,7 @@ Formerly called Craft Loft. Saves made under that name still load.
 
 
 ## Credits
-See [CREDITS.md](CREDITS.md). Retro 3D uses three.js (MIT). Paint mixing uses spectral.js (MIT) and pen strokes use perfect-freehand (MIT).
+See [CREDITS.md](CREDITS.md). Retro 3D uses three.js (MIT) and Rapier (Apache 2.0). Paint mixing uses spectral.js (MIT) and pen strokes use perfect-freehand (MIT).
 
 ## Code
-No build step. `index.html` loads `core.js`, `mediums.js`, `desk.js`, `classes.js`, `town.js` and `stations.js` in that order; `r3d.js` loads when 3D opens. See [HANDOFF.md](HANDOFF.md).
+No build step. `index.html` loads `core.js`, `mediums.js`, `desk.js`, `classes.js`, `town.js` and `stations.js` in that order; `r3d.js` and `physics.js` load when 3D opens. See [HANDOFF.md](HANDOFF.md).
