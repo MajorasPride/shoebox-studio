@@ -5,22 +5,23 @@
 /* To add a station later: add one line to STATIONS and one draw function to STATION_DRAW.
    A station does one of: go:'screen' (switch screen), act:()=>... (run something, like openTool), or soon:1 (coming soon).
    The same walk-around code runs every room. RM is the room you are in: LOB (the studio) or HOUSE (the house in Little Town). */
-const LOB={key:'lobby',W:900,H:790,vw:600,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:450,y:500},tgt:null,pend:null,face:1,ph:0,near:null};
+/* bigger studio (Nov 23): was 900 x 790. W0/H0 = the old size, so stations moved in the old room scale to the new one (stnLoad). fw = widest view before the camera follows you. */
+const LOB={key:'lobby',W:1400,H:1120,W0:900,H0:790,fw:1100,vw:600,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:700,y:640},tgt:null,pend:null,face:1,ph:0,near:null};
 const STATIONS=[
-  {id:'studio',name:'Art Studio',x:120,y:210,wall:1,soon:1},
-  {id:'cork',name:'Cork Board',x:270,y:210,wall:1,soon:1},
-  {id:'board',name:'Art Class',sub:'Learn step by step',x:450,y:210,wall:1,go:'class',verb:'Go to Art Class'},
-  {id:'door',name:'Little Town',sub:'Door',x:770,y:210,wall:1,act:()=>leaveHouse('studio'),verb:'Go out to Little Town'},
-  {id:'desk',name:'School Desk',sub:'Craft',x:210,y:400,go:'craft',verb:'Sit at the School Desk'},
-  {id:'chest',name:'Toy Chest',sub:'Levels and Toy Box',x:690,y:420,act:()=>chestMenu(),verb:'Open the Toy Chest'},
-  {id:'kit',name:'Pixel UI Kit',sub:'Game-kit pegboard',x:620,y:610,go:'kit',verb:'Use the Pixel UI Kit',tagY:-150},
-  {id:'shelf',name:'Bookshelf',sub:'Story Shelf',x:822,y:530,h:172,act:()=>openTool('shelf'),verb:'Open Story Shelf',tagY:-194},
-  {id:'proj',name:'Projector',sub:'Flipbooks',x:110,y:545,act:()=>projMenu(),verb:'Use the projector',tagY:-96},
-  {id:'vhs',name:'VHS Shelf',sub:'Tapes and player',x:232,y:590,act:()=>vhsMenu(),verb:'Use the VHS shelf',tagY:-112},/* T020 */
-  {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:300,y:715,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
-  {id:'fridge',name:'Fridge Gallery',sub:'Example wall',x:110,y:690,act:()=>fridgeOpen(),verb:'Look at the fridge'},/* T021 */
-  {id:'artswap',name:'Art Swap',sub:'Use your own art',x:635,y:742,act:()=>artSwapOpen(),verb:'Open the Art Swap board',tagY:-112},/* T022 (Q041: its own station) */
-  {id:'mirror',name:'Dress-up Mirror',x:800,y:728,soon:1}];
+  {id:'studio',name:'Art Studio',x:160,y:210,wall:1,soon:1},
+  {id:'cork',name:'Cork Board',x:390,y:210,wall:1,soon:1},
+  {id:'board',name:'Art Class',sub:'Learn step by step',x:640,y:210,wall:1,go:'class',verb:'Go to Art Class'},
+  {id:'door',name:'Little Town',sub:'Door',x:1250,y:210,wall:1,act:()=>leaveHouse('studio'),verb:'Go out to Little Town'},
+  {id:'desk',name:'School Desk',sub:'Craft',x:300,y:450,go:'craft',verb:'Sit at the School Desk'},
+  {id:'chest',name:'Toy Chest',sub:'Levels and Toy Box',x:1090,y:470,act:()=>chestMenu(),verb:'Open the Toy Chest'},
+  {id:'kit',name:'Pixel UI Kit',sub:'Game-kit pegboard',x:1010,y:870,go:'kit',verb:'Use the Pixel UI Kit',tagY:-150},
+  {id:'shelf',name:'Bookshelf',sub:'Story Shelf',x:1300,y:720,h:172,act:()=>openTool('shelf'),verb:'Open Story Shelf',tagY:-194},
+  {id:'proj',name:'Projector',sub:'Flipbooks',x:130,y:720,act:()=>projMenu(),verb:'Use the projector',tagY:-96},
+  {id:'vhs',name:'VHS Shelf',sub:'Tapes and player',x:330,y:690,act:()=>vhsMenu(),verb:'Use the VHS shelf',tagY:-112},/* T020 */
+  {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:420,y:900,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
+  {id:'fridge',name:'Fridge Gallery',sub:'Example wall',x:150,y:1010,act:()=>fridgeOpen(),verb:'Look at the fridge'},/* T021 */
+  {id:'artswap',name:'Art Swap',sub:'Use your own art',x:700,y:1030,act:()=>artSwapOpen(),verb:'Open the Art Swap board',tagY:-112},/* T022 (Q041: its own station) */
+  {id:'mirror',name:'Dress-up Mirror',x:1270,y:1010,soon:1}];
 LOB.stn=STATIONS;
 /* ---- the house (a small room you enter from Little Town). Add things to it the same way: one line here, one draw function. ---- */
 const HOUSE={key:'househero',W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:460,y:262},tgt:null,pend:null,face:1,ph:0,near:null,stn:[
@@ -117,12 +118,46 @@ function drawLobbyRoom(){
   g.fillStyle='#6b4a34';g.fillRect(-400,-900,LOB.W+800,900);g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(-400,200,LOB.W+800,LOB.H+700);g.fillStyle='rgba(40,22,10,.45)';g.fillRect(-400,200,400,LOB.H+700);g.fillRect(LOB.W,200,400,LOB.H+700);g.fillRect(0,LOB.H,LOB.W,700);g.fillStyle='rgba(60,35,15,.12)';for(let x=0;x<LOB.W;x+=90)g.fillRect(x,200,2,LOB.H-200);
   g.fillStyle='#f1e2c2';g.fillRect(0,0,LOB.W,210);g.fillStyle='#e3cfa4';g.fillRect(0,150,LOB.W,60);g.fillStyle='#8b5a3c';g.fillRect(0,148,LOB.W,5);g.fillRect(0,206,LOB.W,7);
   g.fillStyle='#6b4a34';g.beginPath();g.moveTo(0,0);g.lineTo(300,0);g.lineTo(0,110);g.fill();g.beginPath();g.moveTo(LOB.W,0);g.lineTo(LOB.W-300,0);g.lineTo(LOB.W,110);g.fill();g.fillRect(0,0,LOB.W,12);
-  g.fillStyle=skyCol();g.beginPath();g.arc(620,84,36,0,TAU);g.fill();drawWinSky(620,84,36);g.strokeStyle='#8b5a3c';g.lineWidth=6;g.beginPath();g.arc(620,84,36,0,TAU);g.stroke();g.beginPath();g.moveTo(584,84);g.lineTo(656,84);g.moveTo(620,48);g.lineTo(620,120);g.lineWidth=3;g.stroke();
+  g.fillStyle=skyCol();g.beginPath();g.arc(960,84,36,0,TAU);g.fill();drawWinSky(960,84,36);g.strokeStyle='#8b5a3c';g.lineWidth=6;g.beginPath();g.arc(960,84,36,0,TAU);g.stroke();g.beginPath();g.moveTo(924,84);g.lineTo(996,84);g.moveTo(960,48);g.lineTo(960,120);g.lineWidth=3;g.stroke();
   /* v1.6a: the rolled-up projector screen under the window */
-  g.fillStyle='#e9e4d6';rr(g,566,128,108,12,6);g.fill();g.strokeStyle='#8b5a3c';g.lineWidth=2;g.stroke();g.fillStyle='#8b5a3c';g.fillRect(618,140,4,6);g.beginPath();g.arc(620,149,4,0,TAU);g.stroke();
-  for(let i=0;i<9;i++){const x=330+i*30,y=26+Math.sin(i/8*Math.PI)*16;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-9,y);g.lineTo(x+9,y);g.lineTo(x,y+16);g.fill()}
-  g.fillStyle='#f191b3';g.beginPath();g.ellipse(450,500,190,92,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(450,500,170,78,0,0,TAU);g.stroke();g.setLineDash([]);
+  g.fillStyle='#e9e4d6';rr(g,906,128,108,12,6);g.fill();g.strokeStyle='#8b5a3c';g.lineWidth=2;g.stroke();g.fillStyle='#8b5a3c';g.fillRect(958,140,4,6);g.beginPath();g.arc(960,149,4,0,TAU);g.stroke();
+  for(let i=0;i<23;i++){const x=370+i*30,y=26+Math.sin(i/22*Math.PI)*22;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-9,y);g.lineTo(x+9,y);g.lineTo(x,y+16);g.fill()}
+  g.fillStyle='#f191b3';g.beginPath();g.ellipse(700,660,250,110,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(700,660,228,95,0,0,TAU);g.stroke();g.setLineDash([]);
+  /* NEW STATION SPOTS: masking-tape squares on the floor, left free for stations still to come */
+  [[600,450],[820,450],[700,880]].forEach(([x,y])=>{g.save();g.translate(x,y);g.strokeStyle='rgba(250,240,190,.8)';g.lineWidth=5;g.setLineDash([18,9]);g.strokeRect(-62,-36,124,66);g.setLineDash([]);g.rotate(-.04);g.fillStyle='rgba(250,240,190,.92)';g.fillRect(-52,-9,104,18);g.fillStyle='#8b5a3c';g.font='800 10.5px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('new station spot',0,1);g.textBaseline='alphabetic';g.restore()});
 }
+/* ================= THE HOBBY-SHOP TRAIN (Nov 23) =================
+   A little model train on a hanging track, like the ones that loop near the ceiling in train stores.
+   It runs along the studio's back wall, round the room above everyone's heads, out through a hole in the right wall,
+   round Little Town on stilts, and back in. Decoration only: no collisions, tap it to make it toot.
+   One clock (Date.now) drives it, so the studio, the town and Retro 3D all agree where it is.
+   TO SWAP THE TRAIN: change TRN.cars (colours) or trnCar (the drawing); Retro 3D builds its cars in r3d.js trn3dCar. */
+const TRN={sp:75,gap:38,cars:['#d9463e','#f5d142','#62b6e8','#63b35d']};
+function trnPath(k){if(k==='studio'){const W=LOB.W;return[[W+70,170],[24,170],[24,500],[W-24,500],[W-24,300],[W+70,300]]}
+  const s=TOWN.studio,ax=s.x+112,X=TW.W-50,Y=TW.H-60;return[[ax,s.y-50],[X-40,s.y-50],[X-40,Y],[60,Y],[60,110],[X,110],[X,s.y-90],[ax,s.y-90]]}
+function trnLen(P){let L=0;for(let i=1;i<P.length;i++)L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L}
+function trnAt(P,d){for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;if(d<=l||i===P.length-1){const k=clamp(d/l,0,1);return{x:a[0]+(b[0]-a[0])*k,y:a[1]+(b[1]-a[1])*k,dx:(b[0]-a[0])/l,dy:(b[1]-a[1])/l,k:(i-1+k)}}d-=l}}
+/* where each car is now: [{i, k:'studio'|'town', d, f (0..1 along that path)}] */
+function trnCars(){const Ps=trnPath('studio'),Pt=trnPath('town'),Ls=trnLen(Ps),Lt=trnLen(Pt),T=Ls+Lt,h=(Date.now()/1000*TRN.sp)%T;
+  return TRN.cars.map((col,i)=>{let d=((h-i*TRN.gap)%T+T)%T;const k=d<Ls?'studio':'town';if(k==='town')d-=Ls;return{i,col,k,d,f:d/(k==='studio'?Ls:Lt)}})}
+function trnCar(c,col,eng,face){c.save();c.scale(face,1);c.fillStyle='rgba(0,0,0,.25)';c.fillRect(-15,-2,30,3);
+  c.fillStyle=col;rr(c,-15,-19,30,15,3);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2;c.stroke();
+  if(eng){c.fillStyle='#3b2f2a';c.fillRect(6,-29,6,11);c.fillStyle='#f6f2e9';rr(c,-15,-27,13,9,2);c.fill();c.stroke();c.fillStyle='#f5d142';c.beginPath();c.arc(15,-11,2.6,0,TAU);c.fill()}
+  else{c.fillStyle='rgba(255,255,255,.55)';c.fillRect(-10,-16,8,6);c.fillRect(2,-16,8,6)}
+  c.fillStyle='#3a3f4b';c.beginPath();c.arc(-8,-3,4,0,TAU);c.arc(8,-3,4,0,TAU);c.fill();c.restore()}
+function trnDraw(c,k){const P=trnPath(k),L=trnLen(P);c.save();
+  /* the track: painted-wood rails, with hangers (studio) or stilts (town) */
+  c.lineJoin='round';c.strokeStyle=k==='town'?'rgba(0,0,0,.13)':'rgba(0,0,0,0)';c.lineWidth=8;if(k==='town'){c.beginPath();P.forEach((p,i)=>i?c.lineTo(p[0],p[1]+46):c.moveTo(p[0],p[1]+46));c.stroke()}
+  c.strokeStyle='rgba(107,74,52,.55)';c.lineWidth=2;c.beginPath();for(let d=0;d<L;d+=150){const q=trnAt(P,d);if(k==='town'){c.moveTo(q.x,q.y);c.lineTo(q.x,q.y+46)}else if(q.y>180){c.moveTo(q.x,q.y-3);c.lineTo(q.x,q.y-130)}}c.stroke();if(k==='studio'){c.strokeStyle='rgba(0,0,0,.09)';c.lineWidth=9;c.beginPath();c.moveTo(40,650);c.lineTo(LOB.W-40,650);c.stroke()}
+  c.strokeStyle='#8b5a3c';c.lineWidth=7;c.beginPath();P.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.strokeStyle='#dcae70';c.lineWidth=2;c.stroke();
+  const port=(x,y,flip)=>{c.save();c.translate(x,y);c.scale(flip,1);c.fillStyle='#6b4a34';rr(c,-4,-34,26,40,8);c.fill();c.fillStyle='#22180f';rr(c,0,-30,22,32,7);c.fill();c.restore()};
+  if(k==='studio'){c.save();c.beginPath();c.rect(-50,-200,LOB.W+50,LOB.H+400);c.clip()}
+  for(const t of trnCars()){if(t.k!==k)continue;const q=trnAt(P,t.d);if(Math.abs(q.dx)>.3)TRN['f'+k+t.i]=q.dx>0?1:-1;c.save();c.translate(q.x,q.y);trnCar(c,t.col,t.i===0,TRN['f'+k+t.i]||1);
+    if(t.i===0&&Math.floor(Date.now()/450)%3===0){c.fillStyle='rgba(255,255,255,.7)';c.beginPath();c.arc(-(TRN['f'+k+'0']||1)*4+9*(TRN['f'+k+'0']||1),-34-(Date.now()%450)/30,4,0,TAU);c.fill()}c.restore()}
+  if(k==='studio'){c.restore();port(LOB.W-2,172,-1);port(LOB.W-2,302,-1)}else{port(P[0][0]-8,P[0][1]+2,1);port(P[P.length-1][0]-8,P[P.length-1][1]+2,1)}
+  c.restore()}
+function trnHit(w,k){const P=trnPath(k);for(const t of trnCars()){if(t.k!==k)continue;const q=trnAt(P,t.d);if(Math.abs(w.x-q.x)<26&&w.y<q.y+8&&w.y>q.y-34)return true}return false}
+function trnToot(){SFX.toot();toast('Toot toot! 🚂')}
 /* the house room: drawn like a shoebox diorama with the front cut away */
 function drawHouseRoom(){const R=HOUSE,Wd=R.W;g.fillStyle='#4a3324';g.fillRect(-600,-900,Wd+1200,1100);
   g.fillStyle='#8b5a3c';g.fillRect(Wd-150,-118,44,90);g.fillStyle='#6b4a34';g.fillRect(Wd-156,-126,56,12);

@@ -84,6 +84,7 @@ const SFX={
   pin(){tn({f:3100,d:.09,g:.14});tn({f:4650,d:.05,g:.07});nz({f:1500,d:.03,g:.25})},
   crease(){nz({f:2400,f2:6200,q:2,d:.17,g:.42})},
   fold(){nz({type:'lowpass',f:1800,d:.14,g:.3});SFX.rustle()},
+  toot(){[[0,.2],[.3,.36]].forEach(([at,d])=>{tn({f:587,d,g:.13,type:'triangle',at});tn({f:740,d,g:.1,type:'triangle',at})})},
   thud(){tn({f:140,f2:70,d:.14,g:.6,type:'triangle'});nz({type:'lowpass',f:500,d:.08,g:.4});for(let i=0;i<4;i++)nz({f:rnd(1500,3000),q:2,d:.03,g:.12,at:.08+rnd(.15)})},
   peel(){nz({f:900,f2:2800,q:3,d:.2,g:.4});SFX.rustle()},
   jump(){nz({f:900,f2:2600,q:1.5,d:.14,g:.22})},
@@ -124,15 +125,15 @@ function mkStarters(){const mk=(name,w,h,beh,fn)=>{const c=mkCanvas(w,h);fn(c._x
     mk('Spring pad',96,44,'bouncy',(x,w,h)=>{x.fillStyle='#f191b3';rr(x,2,2,w-4,12,5);x.fill();x.strokeStyle='#8b5cb6';x.lineWidth=7;x.lineJoin='round';x.beginPath();x.moveTo(16,14);x.lineTo(w-16,22);x.lineTo(16,30);x.lineTo(w-16,38);x.stroke();x.fillStyle='#8b5cb6';rr(x,8,h-8,w-16,8,3);x.fill()})
   ]}
 if(!TOYS){TOYS=mkStarters();saveToys()}
-function lobZoom(){RM.z=RM.fit?clamp(Math.min(W/RM.W,(H-70)/RM.H),.4,1.7):clamp(Math.max(W/RM.W,Math.min(W/RM.vw,H/(RM.H+10))),.4,1.7)}
+function lobZoom(){RM.z=RM.fit?clamp(Math.min(W/RM.W,(H-70)/RM.H),.4,1.7):clamp(Math.max(W/Math.min(RM.W,RM.fw||RM.W),Math.min(W/RM.vw,H/(RM.H+10))),.4,1.7)}
 function lobCam(snap){const vw=W/RM.z,vh=H/RM.z,h=RM.hero,tx=vw>=RM.W?(RM.W-vw)/2:clamp(h.x-vw/2,0,RM.W-vw),ty=vh>=RM.H?(RM.H-vh)/2:clamp(h.y-vh*.55,0,RM.H-vh),k=snap?1:Math.min(1,DT*5);RM.cam.x+=(tx-RM.cam.x)*k;RM.cam.y+=(ty-RM.cam.y)*k}
 function stnAt(w){for(const s of RM.stn){if(s.wall?(Math.abs(w.x-s.x)<70&&w.y<s.y+10&&w.y>s.y-190):(Math.abs(w.x-s.x)<80&&w.y<s.y+12&&w.y>s.y-(s.h||130)))return s}return null}
 function enterStn(s){if(s.act){SFX.tick();s.act()}else if(s.soon){toast(s.name+' is coming in a later pass');SFX.tick()}else{SFX.tick();go(s.go)}}
-function stnSave(){const o={};for(const t of RM.stn)o[t.id]={x:Math.round(t.x),y:Math.round(t.y)};LS.set('stnpos_'+RM.key,o)}
-function stnLoad(R){const o=LS.get('stnpos_'+R.key,null);if(!o)return;for(const t of R.stn){const p=o[t.id];if(p){t.x=p.x;if(!t.wall)t.y=p.y}}}
+function stnSave(){const o={_w:RM.W,_h:RM.H};for(const t of RM.stn)o[t.id]={x:Math.round(t.x),y:Math.round(t.y)};LS.set('stnpos_'+RM.key,o)}
+function stnLoad(R){const o=LS.get('stnpos_'+R.key,null);if(!o)return;const kx=R.W/(o._w||R.W0||R.W),ky=(R.H-300)/((o._h||R.H0||R.H)-300);for(const t of R.stn){const p=o[t.id];if(p){t.x=Math.round(p.x*kx);if(!t.wall)t.y=Math.round(300+(p.y-300)*ky)}}}
 function setMove(on){MOVE=on?{d:null}:null;$('#lobMove').classList.toggle('on',!!on);$('#lobMove').textContent=on?'✓ Done moving':'✋ Move things';RM.tgt=null;RM.pend=null;if(on){RM.near=null;$('#lobGo').style.display='none';toast('Drag anything to move it. Tap Done when finished.')}else stnSave()}
 function lUp(){if(MOVE&&MOVE.d){MOVE.d=null;stnSave();SFX.tick()}}
-function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(MOVE){if(s){MOVE.d={s,ox:w.x-s.x,oy:w.y-s.y};SFX.tick()}return}if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
+function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(!MOVE&&RM===LOB&&trnHit(w,'studio'))trnToot();if(MOVE){if(s){MOVE.d={s,ox:w.x-s.x,oy:w.y-s.y};SFX.tick()}return}if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
 function lMove(e){if(MOVE){if(MOVE.d){const w=lw(e.clientX,e.clientY),t=MOVE.d.s;t.x=clamp(w.x-MOVE.d.ox,60,RM.W-60);if(!t.wall)t.y=clamp(w.y-MOVE.d.oy,300,RM.H-40)}return}if(RM.pend)return;const w=lw(e.clientX,e.clientY);RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)}}
 function updLobby(){const R=RM,h=R.hero;if(R.tgt){const dx=R.tgt.x-h.x,dy=R.tgt.y-h.y,d=Math.hypot(dx,dy);if(d>5){const v=Math.min(d,210*DT);h.x+=dx/d*v;h.y+=dy/d*v;if(Math.abs(dx)>2)R.face=dx>0?1:-1;const p0=R.ph;R.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(R.ph/Math.PI))SFX.step()}else{R.tgt=null;if(R.key)LS.set(R.key,h);if(R.pend){const s=R.pend;R.pend=null;enterStn(s);return}}}
   petFollow(h.x,h.y,0,40);
@@ -147,6 +148,7 @@ function drawLobby(){const z=RM.z,cam=RM.cam;g.fillStyle='#3e2a1e';g.fillRect(0,
   for(const o of list){if(o.pet){if(PET.kind!=='none'&&PET.ok){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(PET.x,PET.y,15,5,0,0,TAU);g.fill();g.save();g.translate(PET.x,PET.y);g.scale(1.3,1.3);drawPet(g,0,0);g.restore()}}else if(o.hero){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(h.x,h.y,17,6,0,0,TAU);g.fill();g.save();g.translate(h.x,h.y);g.scale(1.35,1.35);drawHero(g,0,0,RM.face,RM.ph,false);g.restore()}
     else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(MOVE){g.strokeStyle=MOVE.d&&MOVE.d.s===s?'rgba(245,209,66,1)':'rgba(255,255,255,.75)';g.lineWidth=3;g.setLineDash([7,6]);g.lineDashOffset=-NOW/60;g.beginPath();g.ellipse(0,s.wall?30:6,46,14,0,0,TAU);g.stroke();g.setLineDash([])}if(RM.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
   if(RM.tgt&&!RM.pend){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(RM.tgt.x,RM.tgt.y,9+Math.sin(NOW/120)*2,0,TAU);g.stroke()}
+  if(RM===LOB)trnDraw(g,'studio');
   g.restore()}
 function updBadge(){$('#nBox').textContent=LIB?LIB.length:TOYS.length}
 /* ---- screens ---- */

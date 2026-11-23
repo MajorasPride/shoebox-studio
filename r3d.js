@@ -219,8 +219,25 @@ async function buildTown() {
     if (it.act === 'door') { if (toy.w * s > 26) col.push({ x0: it.x - toy.w * s * .42, x1: it.x + toy.w * s * .42, z0: it.y - 12, z1: it.y + 10, it }); } /* doors open and close, so they keep the simple box check */
     else if (!moving && !pinfo.ball && (it.tb || 'block') !== 'pass' && toy.w * s > 26 && toy.h * s > 26) solids.push({ x: it.x, z: it.y - 2, w: toy.w * s * .84, d: 20, h: toy.h * s, yaw, it });
   }
-  return { sc, col, items, blds, solids, waters, kind: 'town', bvh: solidBVH(solids), bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
+  const trn = trn3d(sc, 'town');
+  return { sc, col, items, blds, solids, waters, trn, kind: 'town', bvh: solidBVH(solids), bounds: { x0: 18, x1: TW.W - 18, z0: 18, z1: TW.H - 18 } };
 }
+/* the hobby-shop train (TRN, trnPath, trnCars in index.html): its track up high and its cars, which follow the same clock as 2D.
+   Studio: the 2D wall rail (y 170) sits on the back wall, the 2D front span (y 500) hangs above the floor. Town: on stilts. */
+function trn3d(sc, k) {
+  const h = k === 'town' ? 170 : 150, zk = k === 'town' ? 1 : 440 / 330, map = (x, y) => k === 'town' ? { x, z: y } : { x, z: 230 + (y - 170) * zk };
+  const P = trnPath(k).map(p => map(p[0], p[1])), wood = lam({ color: 0x8b5a3c });
+  for (let i = 1; i < P.length; i++) { const a = P[i - 1], b = P[i], l = Math.hypot(b.x - a.x, b.z - a.z), m = new THREE.Mesh(new THREE.BoxGeometry(12, 4, l + 12), wood); m.position.set((a.x + b.x) / 2, h - 2, (a.z + b.z) / 2); m.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); sc.add(m);
+    if (k === 'town') for (let d = 0; d < l; d += 160) { const post = new THREE.Mesh(new THREE.BoxGeometry(4, h, 4), wood); post.position.set(a.x + (b.x - a.x) * d / l, h / 2, a.z + (b.z - a.z) * d / l); sc.add(post); } }
+  if (k === 'studio') { const hole = lam({ color: 0x22180f }); [170, 300].forEach(y => { const m = new THREE.Mesh(new THREE.BoxGeometry(2, 34, 28), hole); m.position.set(LOB.W - 1, h + 14, map(0, y).z); sc.add(m); }); }
+  const cars = TRN.cars.map((col, i) => trn3dCar(sc, col, i === 0));
+  return { k, h, zk, map, cars };
+}
+/* one car: a painted block, the engine gets a chimney. Swap this to change the 3D train. */
+function trn3dCar(sc, col, eng) { const g = new THREE.Group(), b = new THREE.Mesh(new THREE.BoxGeometry(14, 15, 30), lam({ color: col })); b.position.y = 11; g.add(b);
+  const wm = lam({ color: 0x3a3f4b }); [-9, 9].forEach(z => { const w = new THREE.Mesh(new THREE.BoxGeometry(16, 8, 8), wm); w.position.set(0, 4, z); g.add(w); });
+  if (eng) { const ch = new THREE.Mesh(new THREE.BoxGeometry(6, 11, 6), lam({ color: 0x3b2f2a })); ch.position.set(0, 24, 9); g.add(ch); } sc.add(g); return g; }
+function trn3dStep(T) { const P = trnPath(T.k); for (const t of trnCars()) { const m = T.cars[t.i]; m.visible = t.k === T.k; if (!m.visible) continue; const q = trnAt(P, t.d), p = T.map(q.x, q.y); m.position.set(p.x, T.h, p.z); m.rotation.y = Math.atan2(q.dx, q.dy * T.zk); } }
 /* the studio or the house: the room's 2D background becomes the floor and back wall; stations stand up as cutouts */
 async function buildRoom(R) {
   const sc = baseScene(), col = [], solids = [], WALLZ = 222, WH = 250;
@@ -256,7 +273,8 @@ async function buildRoom(R) {
     const sp = standPt(s); stns.push({ s, at: { x: sp.x, z: sp.y } });
     if (!s.wall && w > 30) solids.push({ x: s.x + ox, z: z - 6, w: w * .84, d: th + 24, h });
   }
-  return { sc, col, items: [], blds: [], stns, solids, waters: [], kind: R === HOUSE ? 'house' : R.shop ? 'shop' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
+  const trn = R === LOB ? trn3d(sc, 'studio') : null;
+  return { sc, col, items: [], blds: [], stns, solids, waters: [], trn, kind: R === HOUSE ? 'house' : R.shop ? 'shop' : 'home', R, bvh: solidBVH(solids), bounds: { x0: 22, x1: R.W - 22, z0: WALLZ + 26, z1: R.H - 20 } };
 }
 
 /* ---------- the view: overlay, controls, loop ---------- */
@@ -396,6 +414,7 @@ function loop(ts) {
   if (K.q) R.yaw += dt * 2; if (K.r) R.yaw -= dt * 2;
   const sy = Math.sin(R.yaw), cy = Math.cos(R.yaw), p = R.pos; if (ml > .05 && !R.busy) { p.x += (mx * cy + mz * sy) * SPEED * dt; p.z += (-mx * sy + mz * cy) * SPEED * dt; R.bob = (R.bob || 0) + dt * 9 * Math.min(1, ml); } collide(p);
   /* the world keeps living: cars drive, the clock runs (clkTick runs in the game's frame) */
+  if (S.trn) trn3dStep(S.trn);
   if (S.kind === 'town') { TOWN.hero.x = p.x; TOWN.hero.y = p.z; try { townActs(dt); } catch (e) { } }
   if (R.P) R.P.step(dt, { pos: p, yaw: R.yaw, pitch: R.pitch, eye: EYE, moving: ml > .05 && !R.busy });
   const { c, k } = skyCols(); R.renderer.setClearColor(c); S.sc.fog.color.copy(c); S.sc.userData.L.hemi.intensity = 1.5 - k * 1.0; S.sc.userData.L.sun.intensity = 1.6 * (1 - k) + .1; S.sc.userData.L.hemi.color.setHex(k > .5 ? 0x8fa0ff : 0xffffff);
