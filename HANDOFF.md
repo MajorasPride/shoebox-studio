@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`; rollback copies moved to Google Drive on Nov 23)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -26,7 +26,7 @@ _Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`;
 - Plan & Results doc (Google Docs): https://docs.google.com/document/d/1qK_6I6-r1UYR5d-sLYLuauwfbBMBov7so18W7_4GTrY/edit. Command Tracker: project P004, ticket T007, result R008.
 - Drive backup of v1.4 `index.html`: https://drive.google.com/file/d/1p-Xa8B4TIeGIKZFM86gN3wfOVEDcd90x/view
 - Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
-- Rollback copies (whole game, playable): `/v1.4/` and `/v1.5.2/` (https://majoraspride.github.io/shoebox-studio/v1.5.2/). To roll back the live site, copy `v1.5.2/index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
+- Rollback copies (whole game, playable): moved off GitHub on Nov 23, 2026 to the Google Drive folder "GitHub Archive (Nov 23)" inside Master Game & Software (https://drive.google.com/drive/folders/1hF3Au0Y3PiZnFNmgsc4oRunDVCQ3MFdS) as `shoebox-studio_v1.4.zip` and `shoebox-studio_v1.5.2.zip`. They are also still in this repo's git history. To roll back the live site, unzip one and copy its `index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
 
 ## What v1.6c added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
@@ -75,7 +75,7 @@ Code: search "v1.6a". It was first sent as a patch/bundle in Drive (folder "Shoe
 3. **Both buildings move** (house and studio), positions saved in the town save (`TOWN.house`, `TOWN.studio`). Old towns get a studio at a default spot (600, 470).
 4. **Resume where you left off.** Save key `craftloft_where` = {s: home | house | town, walk}. Tapping the title screen goes there. Screens inside the studio (desk, class, kit, levels, toy box) resume to the studio. House position is saved as `craftloft_househero`, studio as `craftloft_lobby`, town in the town save. New players start in the studio.
 5. If the hero is blocked close to a building's door (within 190 px), it goes in anyway, so you can't get stuck behind your own house.
-6. Rollback copy of v1.4 is in `/v1.4/`.
+6. Rollback copy of v1.4 is in Google Drive (see Rollback copies above).
 - Code: search "v1.5:" comments, `BLD`, `bldAt`, `drawTownStudio`, `resume()`.
 - Tests run: Playwright at 412x860 and 1280x800: studio door to town, walk into house and studio, move studio, reload resumes house / studio / town (walk mode kept), brand-new save starts in studio, all screens and Story Shelf open, no page errors.
 
