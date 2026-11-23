@@ -30,7 +30,7 @@ _Last updated: Nov 23, 2026 (v1.6c live on `main`. Branch `studio-bigger-preview
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
 
 ## Bigger studio + hobby-shop train (branch `studio-bigger-preview`, Nov 23, 2026, NOT live)
-**Status: waiting on his OK to merge to main.** Private preview: PREVIEW_URL
+**Status: waiting on his OK to merge to main.** Private preview (play on the phone): https://claude.ai/artifact/8DG5ZkjHHQmfsxw3Pg1LBE (3D loads three.js from jsDelivr in the preview copy only; Export/download buttons don't work inside the Claude viewer, as before)
 1. **The studio room is bigger**: 900 x 790 became **1400 x 1120** (about 2.2x the floor). Every station spread out (new spots in `STATIONS`), the pink rug, round window, roll-up screen and bunting moved to fit. The camera shows at most 1100 px of width before it follows you (`LOB.fw`), so on PC and phone the room scrolls instead of shrinking everything.
 2. **Three "new station spot" tape squares** on the floor (between the School Desk and Toy Chest, and in front of the rug) for stations still to come. Drawn in `drawLobbyRoom`.
 3. **Old saves**: stations moved with Move things are scaled from the old room to the new one (`stnLoad` uses `LOB.W0/H0`); new saves store the room size (`_w/_h`). Where-you-left-off, doors, Move things and Retro 3D all still work.
