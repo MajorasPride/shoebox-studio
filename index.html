@@ -340,6 +340,7 @@ const SFX={
   pin(){tn({f:3100,d:.09,g:.14});tn({f:4650,d:.05,g:.07});nz({f:1500,d:.03,g:.25})},
   crease(){nz({f:2400,f2:6200,q:2,d:.17,g:.42})},
   fold(){nz({type:'lowpass',f:1800,d:.14,g:.3});SFX.rustle()},
+  toot(){[[0,.2],[.3,.36]].forEach(([at,d])=>{tn({f:587,d,g:.13,type:'triangle',at});tn({f:740,d,g:.1,type:'triangle',at})})},
   thud(){tn({f:140,f2:70,d:.14,g:.6,type:'triangle'});nz({type:'lowpass',f:500,d:.08,g:.4});for(let i=0;i<4;i++)nz({f:rnd(1500,3000),q:2,d:.03,g:.12,at:.08+rnd(.15)})},
   peel(){nz({f:900,f2:2800,q:3,d:.2,g:.4});SFX.rustle()},
   jump(){nz({f:900,f2:2600,q:1.5,d:.14,g:.22})},
@@ -705,7 +706,7 @@ function itemAt(w){const arr=drawOrder();for(let i=arr.length-1;i>=0;i--){const 
 function drawItem(c,it,t,swing){const toy=toyById(it.toy);if(!toy)return;c.save();c.translate(it.x,it.y);c.scale(it.s*it.flip,it.s);c.translate(-toy.w/2,-toy.h);drawToy(c,toy,t,swing);c.restore()}
 function clampCam(){const vw=W/ST.z,vh=H/ST.z;if(ST.kind==='level'){ST.cam.x=clamp(ST.cam.x,-120,Math.max(-120,LV.W+120-vw));ST.cam.y=clamp(ST.cam.y,LV.TOP-60,LV.G-vh*.4)}else{ST.cam.x=clamp(ST.cam.x,-260,Math.max(-260,TW.W+260-vw));ST.cam.y=clamp(ST.cam.y,-260,Math.max(-260,TW.H+420-vh))}}
 function fixItem(it){if(ST.kind==='level'){it.x=clamp(it.x,0,LV.W);if(it.y>LV.G-10)it.y=LV.G;it.y=Math.max(LV.TOP+40,it.y)}else{it.x=clamp(it.x,20,TW.W-20);it.y=clamp(it.y,40,TW.H-10);if(it.s===1&&isRoad(it)){it.x=clamp(Math.round(it.x/100)*100,0,TW.W);it.y=clamp(Math.round((it.y-70)/100)*100+70,170,TW.H-30)}}}
-function sDown(e){const w=sw(e.clientX,e.clientY);if(ST.play)return;if(ST.kind==='level'&&ST.layer==='hud'){hudDown(e);return}if(ST.walk){const dI=ST.kind==='town'&&itemAt(w);if(dI&&dI.act==='door'){dI.open=!dI.open;SFX.clack();saveStage();toast(dI.open?'Open':'Closed');return}const bk=ST.kind==='town'?bldAt(w):null;if(bk){const p=TOWN[bk],dr=BLD[bk].door;ST.tgt={x:p.x+dr.x,y:p.y+dr.y};ST.pendH=bk;ST.st={k:'toHouse'};return}ST.pendH=0;ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)};ST.st={k:'walk'};return}
+function sDown(e){const w=sw(e.clientX,e.clientY);if(ST.play)return;if(ST.kind==='town'&&trnHit(w,'town'))trnToot();if(ST.kind==='level'&&ST.layer==='hud'){hudDown(e);return}if(ST.walk){const dI=ST.kind==='town'&&itemAt(w);if(dI&&dI.act==='door'){dI.open=!dI.open;SFX.clack();saveStage();toast(dI.open?'Open':'Closed');return}const bk=ST.kind==='town'?bldAt(w):null;if(bk){const p=TOWN[bk],dr=BLD[bk].door;ST.tgt={x:p.x+dr.x,y:p.y+dr.y};ST.pendH=bk;ST.st={k:'toHouse'};return}ST.pendH=0;ST.tgt={x:clamp(w.x,20,TW.W-20),y:clamp(w.y,40,TW.H-10)};ST.st={k:'walk'};return}
   if(ST.arm){const t=toyById(ST.arm);if(!t){ST.arm=null;return}if(ST.d.items.length>=120){toast('That is a lot of pieces! Remove some first.');return}const s=Math.min(1,150/Math.max(t.w,t.h)),it={toy:t.id,x:w.x,y:w.y+t.h*s/2,s,flip:1,beh:t.beh||'solid'};if(ST.kind==='town'){it.act=t.act||'none';if(t.road||it.act==='vehicle')it.tb='pass'}fixItem(it);ST.d.items.push(it);ST.sel=it;SFX.thwap();ST.st={k:'drag',it,ox:w.x-it.x,oy:w.y-it.y};updItemBar();return}
   if(ST.kind==='level')for(const k of['goal','start']){const o=ST.d[k];if(Math.abs(w.x-o.x)<36&&w.y>o.y-92&&w.y<o.y+16){ST.st={k:'spec',o,ox:w.x-o.x,oy:w.y-o.y};ST.sel=null;updItemBar();return}}
   const it=itemAt(w);if(it){ST.sel=it;ST.st={k:'drag',it,ox:w.x-it.x,oy:w.y-it.y};SFX.tick()}else if(ST.kind==='town'&&bldAt(w)){const bk=bldAt(w);ST.sel=null;ST.st={k:'house',b:bk,sx:e.clientX,sy:e.clientY,ox:w.x-TOWN[bk].x,oy:w.y-TOWN[bk].y,mv:0}}else{ST.sel=null;ST.st={k:'pan',sx:e.clientX,sy:e.clientY,cx:ST.cam.x,cy:ST.cam.y}}updItemBar()}
@@ -779,7 +780,7 @@ function drawStage(){const z=ST.z,cam=ST.cam,t=ST.t||0,lvl=ST.kind==='level';
     g.fillStyle='rgba(90,60,30,.45)';g.font='900 40px system-ui';g.textAlign='center';g.fillText('Little Town',TW.W/2,70);
     const hr=TOWN.hero,hz=ST.th.z||0,arr=drawOrder().map(it=>({y:ordY(it),it})).concat([{y:hz?1e9:hr.y,hero:1},{y:PET.z>2?1e9-1:PET.y-.1,pet:1},{y:TOWN.house.y,house:1},{y:TOWN.studio.y,studio:1}]).sort((a,b)=>a.y-b.y);if(!PET.ok)petSnap(hr.x,hr.y);
     for(const o of arr){if(o.studio){drawTownStudio(g,TOWN.studio,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.house){drawTownHouse(g,TOWN.house,ST.arm?'':ST.walk?'tap to go in':'tap to go in · drag to move')}else if(o.pet){if(PET.kind!=='none'){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(PET.x,PET.y,12,4,0,0,TAU);g.fill();drawPet(g,PET.x,PET.y-PET.z)}}else if(o.hero){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(hr.x,hr.y,14,5,0,0,TAU);g.fill();drawHero(g,hr.x,hr.y-hz,ST.th.face,ST.th.ph,hz>0)}else{const r=itemRect(o.it);if(!r)continue;if(!isRoad(o.it)){g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(o.it.x,o.it.y,r.w*.45,Math.min(12,r.w*.12),0,0,TAU);g.fill()}drawTownItem(o.it,r,t)}}
-    townNight();
+    trnDraw(g,'town');townNight();
     if(ST.walk&&ST.tgt){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(ST.tgt.x,ST.tgt.y,9+Math.sin(t*8)*2,0,TAU);g.stroke()}}
   if(!ST.play&&!ST.walk){
     if(lvl)for(const it of LVL.items){if(it.beh==='solid')continue;const r=itemRect(it);if(!r)continue;g.font=(15/z)+'px system-ui';g.textAlign='left';g.textBaseline='bottom';g.fillText(BEH[it.beh].em,r.x,r.y+2)}
@@ -804,21 +805,22 @@ function petMenu(){dlg('<h2>Pick a companion</h2><p>It follows you in the loft, 
 /* To add a station later: add one line to STATIONS and one draw function to STATION_DRAW.
    A station does one of: go:'screen' (switch screen), act:()=>... (run something, like openTool), or soon:1 (coming soon).
    The same walk-around code runs every room. RM is the room you are in: LOB (the studio) or HOUSE (the house in Little Town). */
-const LOB={key:'lobby',W:900,H:790,vw:600,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:450,y:500},tgt:null,pend:null,face:1,ph:0,near:null};
+/* bigger studio (Nov 23): was 900 x 790. W0/H0 = the old size, so stations moved in the old room scale to the new one (stnLoad). fw = widest view before the camera follows you. */
+const LOB={key:'lobby',W:1400,H:1120,W0:900,H0:790,fw:1100,vw:600,cam:{x:0,y:0},z:1,hero:LS.get('lobby',null)||{x:700,y:640},tgt:null,pend:null,face:1,ph:0,near:null};
 const STATIONS=[
-  {id:'studio',name:'Art Studio',x:120,y:210,wall:1,soon:1},
-  {id:'cork',name:'Cork Board',x:270,y:210,wall:1,soon:1},
-  {id:'board',name:'Art Class',sub:'Learn step by step',x:450,y:210,wall:1,go:'class',verb:'Go to Art Class'},
-  {id:'door',name:'Little Town',sub:'Door',x:770,y:210,wall:1,act:()=>leaveHouse('studio'),verb:'Go out to Little Town'},
-  {id:'desk',name:'School Desk',sub:'Craft',x:210,y:400,go:'craft',verb:'Sit at the School Desk'},
-  {id:'chest',name:'Toy Chest',sub:'Levels and Toy Box',x:690,y:420,act:()=>chestMenu(),verb:'Open the Toy Chest'},
-  {id:'kit',name:'Pixel UI Kit',sub:'Game-kit pegboard',x:620,y:610,go:'kit',verb:'Use the Pixel UI Kit',tagY:-150},
-  {id:'shelf',name:'Bookshelf',sub:'Story Shelf',x:822,y:530,h:172,act:()=>openTool('shelf'),verb:'Open Story Shelf',tagY:-194},
-  {id:'proj',name:'Projector',sub:'Flipbooks',x:110,y:545,act:()=>projMenu(),verb:'Use the projector',tagY:-96},
-  {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:300,y:715,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
-  {id:'fridge',name:'Fridge Gallery',x:110,y:690,soon:1},
-  {id:'shop',name:'Supply Shop',x:450,y:745,soon:1},
-  {id:'mirror',name:'Dress-up Mirror',x:800,y:728,soon:1}];
+  {id:'studio',name:'Art Studio',x:160,y:210,wall:1,soon:1},
+  {id:'cork',name:'Cork Board',x:390,y:210,wall:1,soon:1},
+  {id:'board',name:'Art Class',sub:'Learn step by step',x:640,y:210,wall:1,go:'class',verb:'Go to Art Class'},
+  {id:'door',name:'Little Town',sub:'Door',x:1250,y:210,wall:1,act:()=>leaveHouse('studio'),verb:'Go out to Little Town'},
+  {id:'desk',name:'School Desk',sub:'Craft',x:300,y:450,go:'craft',verb:'Sit at the School Desk'},
+  {id:'chest',name:'Toy Chest',sub:'Levels and Toy Box',x:1090,y:470,act:()=>chestMenu(),verb:'Open the Toy Chest'},
+  {id:'kit',name:'Pixel UI Kit',sub:'Game-kit pegboard',x:1010,y:870,go:'kit',verb:'Use the Pixel UI Kit',tagY:-150},
+  {id:'shelf',name:'Bookshelf',sub:'Story Shelf',x:1300,y:720,h:172,act:()=>openTool('shelf'),verb:'Open Story Shelf',tagY:-194},
+  {id:'proj',name:'Projector',sub:'Flipbooks',x:130,y:720,act:()=>projMenu(),verb:'Use the projector',tagY:-96},
+  {id:'pets',name:'Pet Basket',sub:'Pick a companion',x:420,y:880,act:()=>petMenu(),verb:'Pick a companion',tagY:-62},
+  {id:'fridge',name:'Fridge Gallery',x:150,y:1010,soon:1},
+  {id:'shop',name:'Supply Shop',x:700,y:1030,soon:1},
+  {id:'mirror',name:'Dress-up Mirror',x:1270,y:1010,soon:1}];
 LOB.stn=STATIONS;
 /* ---- the house (a small room you enter from Little Town). Add things to it the same way: one line here, one draw function. ---- */
 const HOUSE={key:'househero',W:560,H:600,fit:1,cam:{x:0,y:0},z:1,hero:{x:460,y:262},tgt:null,pend:null,face:1,ph:0,near:null,stn:[
@@ -878,18 +880,18 @@ const STATION_DRAW={
   fridge(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,46,10,0,0,TAU);c.fill();c.fillStyle='#f6f2e9';rr(c,-38,-126,76,128,10);c.fill();c.strokeStyle='#b9bcc2';c.lineWidth=3;c.stroke();c.beginPath();c.moveTo(-38,-82);c.lineTo(38,-82);c.stroke();c.fillStyle='#b9bcc2';c.fillRect(24,-112,5,22);c.fillRect(24,-74,5,30);[['#d9463e',-26,-70],['#63b35d',-4,-56],['#62b6e8',-24,-36]].forEach(n=>{c.fillStyle=n[0];c.fillRect(n[1],n[2],18,15)})},
   shop(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,80,12,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';c.fillRect(-72,-112,6,114);c.fillRect(66,-112,6,114);c.fillStyle='#caa76c';rr(c,-76,-50,152,50,5);c.fill();for(let i=0;i<8;i++){c.fillStyle=i%2?'#f6f2e9':'#d9463e';c.fillRect(-80+i*20,-128,20,28)}['#f5d142','#62b6e8','#f191b3','#63b35d'].forEach((k,i)=>{c.fillStyle=k;c.fillRect(-58+i*30,-66,22,16)})},
   mirror(c){c.fillStyle='rgba(0,0,0,.2)';c.beginPath();c.ellipse(0,4,30,8,0,0,TAU);c.fill();c.fillStyle='#8b5a3c';c.fillRect(-4,-30,8,32);c.fillStyle='#caa76c';c.beginPath();c.ellipse(0,-78,34,54,0,0,TAU);c.fill();c.fillStyle='#cfe8f2';c.beginPath();c.ellipse(0,-78,27,47,0,0,TAU);c.fill();c.strokeStyle='rgba(255,255,255,.8)';c.lineWidth=4;c.beginPath();c.moveTo(-12,-100);c.lineTo(4,-116);c.stroke()}};
-function lobZoom(){RM.z=RM.fit?clamp(Math.min(W/RM.W,(H-70)/RM.H),.4,1.7):clamp(Math.max(W/RM.W,Math.min(W/RM.vw,H/(RM.H+10))),.4,1.7)}
+function lobZoom(){RM.z=RM.fit?clamp(Math.min(W/RM.W,(H-70)/RM.H),.4,1.7):clamp(Math.max(W/Math.min(RM.W,RM.fw||RM.W),Math.min(W/RM.vw,H/(RM.H+10))),.4,1.7)}
 function lobCam(snap){const vw=W/RM.z,vh=H/RM.z,h=RM.hero,tx=vw>=RM.W?(RM.W-vw)/2:clamp(h.x-vw/2,0,RM.W-vw),ty=vh>=RM.H?(RM.H-vh)/2:clamp(h.y-vh*.55,0,RM.H-vh),k=snap?1:Math.min(1,DT*5);RM.cam.x+=(tx-RM.cam.x)*k;RM.cam.y+=(ty-RM.cam.y)*k}
 const lw=(sx,sy)=>({x:RM.cam.x+sx/RM.z,y:RM.cam.y+sy/RM.z});
 function stnAt(w){for(const s of RM.stn){if(s.wall?(Math.abs(w.x-s.x)<70&&w.y<s.y+10&&w.y>s.y-190):(Math.abs(w.x-s.x)<80&&w.y<s.y+12&&w.y>s.y-(s.h||130)))return s}return null}
 function enterStn(s){if(s.act){SFX.tick();s.act()}else if(s.soon){toast(s.name+' is coming in a later pass');SFX.tick()}else{SFX.tick();go(s.go)}}
 /* v1.5.1: Move things mode. Drag any station in the studio or the house. Wall things slide along the wall, floor things go anywhere on the floor. Saved per room (craftloft_stnpos_lobby / _househero). */
 let MOVE=null;
-function stnSave(){const o={};for(const t of RM.stn)o[t.id]={x:Math.round(t.x),y:Math.round(t.y)};LS.set('stnpos_'+RM.key,o)}
-function stnLoad(R){const o=LS.get('stnpos_'+R.key,null);if(!o)return;for(const t of R.stn){const p=o[t.id];if(p){t.x=p.x;if(!t.wall)t.y=p.y}}}
+function stnSave(){const o={_w:RM.W,_h:RM.H};for(const t of RM.stn)o[t.id]={x:Math.round(t.x),y:Math.round(t.y)};LS.set('stnpos_'+RM.key,o)}
+function stnLoad(R){const o=LS.get('stnpos_'+R.key,null);if(!o)return;const kx=R.W/(o._w||R.W0||R.W),ky=(R.H-300)/((o._h||R.H0||R.H)-300);for(const t of R.stn){const p=o[t.id];if(p){t.x=Math.round(p.x*kx);if(!t.wall)t.y=Math.round(300+(p.y-300)*ky)}}}
 function setMove(on){MOVE=on?{d:null}:null;$('#lobMove').classList.toggle('on',!!on);$('#lobMove').textContent=on?'✓ Done moving':'✋ Move things';RM.tgt=null;RM.pend=null;if(on){RM.near=null;$('#lobGo').style.display='none';toast('Drag anything to move it. Tap Done when finished.')}else stnSave()}
 function lUp(){if(MOVE&&MOVE.d){MOVE.d=null;stnSave();SFX.tick()}}
-function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(MOVE){if(s){MOVE.d={s,ox:w.x-s.x,oy:w.y-s.y};SFX.tick()}return}if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
+function lDown(e){const w=lw(e.clientX,e.clientY),s=stnAt(w);if(!MOVE&&RM===LOB&&trnHit(w,'studio'))trnToot();if(MOVE){if(s){MOVE.d={s,ox:w.x-s.x,oy:w.y-s.y};SFX.tick()}return}if(s){RM.tgt=standPt(s);RM.pend=s}else{RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)};RM.pend=null}}
 function lMove(e){if(MOVE){if(MOVE.d){const w=lw(e.clientX,e.clientY),t=MOVE.d.s;t.x=clamp(w.x-MOVE.d.ox,60,RM.W-60);if(!t.wall)t.y=clamp(w.y-MOVE.d.oy,300,RM.H-40)}return}if(RM.pend)return;const w=lw(e.clientX,e.clientY);RM.tgt={x:clamp(w.x,30,RM.W-30),y:clamp(w.y,236,RM.H-16)}}
 function updLobby(){const R=RM,h=R.hero;if(R.tgt){const dx=R.tgt.x-h.x,dy=R.tgt.y-h.y,d=Math.hypot(dx,dy);if(d>5){const v=Math.min(d,210*DT);h.x+=dx/d*v;h.y+=dy/d*v;if(Math.abs(dx)>2)R.face=dx>0?1:-1;const p0=R.ph;R.ph+=DT*14;if(Math.floor(p0/Math.PI)!==Math.floor(R.ph/Math.PI))SFX.step()}else{R.tgt=null;if(R.key)LS.set(R.key,h);if(R.pend){const s=R.pend;R.pend=null;enterStn(s);return}}}
   petFollow(h.x,h.y,0,40);
@@ -902,11 +904,13 @@ function drawLobbyRoom(){
   g.fillStyle='#6b4a34';g.fillRect(-400,-900,LOB.W+800,900);g.fillStyle=g.createPattern(WOOD,'repeat');g.fillRect(-400,200,LOB.W+800,LOB.H+700);g.fillStyle='rgba(40,22,10,.45)';g.fillRect(-400,200,400,LOB.H+700);g.fillRect(LOB.W,200,400,LOB.H+700);g.fillRect(0,LOB.H,LOB.W,700);g.fillStyle='rgba(60,35,15,.12)';for(let x=0;x<LOB.W;x+=90)g.fillRect(x,200,2,LOB.H-200);
   g.fillStyle='#f1e2c2';g.fillRect(0,0,LOB.W,210);g.fillStyle='#e3cfa4';g.fillRect(0,150,LOB.W,60);g.fillStyle='#8b5a3c';g.fillRect(0,148,LOB.W,5);g.fillRect(0,206,LOB.W,7);
   g.fillStyle='#6b4a34';g.beginPath();g.moveTo(0,0);g.lineTo(300,0);g.lineTo(0,110);g.fill();g.beginPath();g.moveTo(LOB.W,0);g.lineTo(LOB.W-300,0);g.lineTo(LOB.W,110);g.fill();g.fillRect(0,0,LOB.W,12);
-  g.fillStyle=skyCol();g.beginPath();g.arc(620,84,36,0,TAU);g.fill();drawWinSky(620,84,36);g.strokeStyle='#8b5a3c';g.lineWidth=6;g.beginPath();g.arc(620,84,36,0,TAU);g.stroke();g.beginPath();g.moveTo(584,84);g.lineTo(656,84);g.moveTo(620,48);g.lineTo(620,120);g.lineWidth=3;g.stroke();
+  g.fillStyle=skyCol();g.beginPath();g.arc(960,84,36,0,TAU);g.fill();drawWinSky(960,84,36);g.strokeStyle='#8b5a3c';g.lineWidth=6;g.beginPath();g.arc(960,84,36,0,TAU);g.stroke();g.beginPath();g.moveTo(924,84);g.lineTo(996,84);g.moveTo(960,48);g.lineTo(960,120);g.lineWidth=3;g.stroke();
   /* v1.6a: the rolled-up projector screen under the window */
-  g.fillStyle='#e9e4d6';rr(g,566,128,108,12,6);g.fill();g.strokeStyle='#8b5a3c';g.lineWidth=2;g.stroke();g.fillStyle='#8b5a3c';g.fillRect(618,140,4,6);g.beginPath();g.arc(620,149,4,0,TAU);g.stroke();
-  for(let i=0;i<9;i++){const x=330+i*30,y=26+Math.sin(i/8*Math.PI)*16;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-9,y);g.lineTo(x+9,y);g.lineTo(x,y+16);g.fill()}
-  g.fillStyle='#f191b3';g.beginPath();g.ellipse(450,500,190,92,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(450,500,170,78,0,0,TAU);g.stroke();g.setLineDash([]);
+  g.fillStyle='#e9e4d6';rr(g,906,128,108,12,6);g.fill();g.strokeStyle='#8b5a3c';g.lineWidth=2;g.stroke();g.fillStyle='#8b5a3c';g.fillRect(958,140,4,6);g.beginPath();g.arc(960,149,4,0,TAU);g.stroke();
+  for(let i=0;i<23;i++){const x=370+i*30,y=26+Math.sin(i/22*Math.PI)*22;g.fillStyle=PAPERS[i%9];g.beginPath();g.moveTo(x-9,y);g.lineTo(x+9,y);g.lineTo(x,y+16);g.fill()}
+  g.fillStyle='#f191b3';g.beginPath();g.ellipse(700,660,250,110,0,0,TAU);g.fill();g.strokeStyle='#fbf6ea';g.lineWidth=5;g.setLineDash([12,10]);g.beginPath();g.ellipse(700,660,228,95,0,0,TAU);g.stroke();g.setLineDash([]);
+  /* NEW STATION SPOTS: masking-tape squares on the floor, left free for stations still to come */
+  [[600,450],[820,450],[700,880]].forEach(([x,y])=>{g.save();g.translate(x,y);g.strokeStyle='rgba(250,240,190,.8)';g.lineWidth=5;g.setLineDash([18,9]);g.strokeRect(-62,-36,124,66);g.setLineDash([]);g.rotate(-.04);g.fillStyle='rgba(250,240,190,.92)';g.fillRect(-52,-9,104,18);g.fillStyle='#8b5a3c';g.font='800 10.5px ui-rounded,system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('new station spot',0,1);g.textBaseline='alphabetic';g.restore()});
 }
 /* the house room: drawn like a shoebox diorama with the front cut away */
 function drawHouseRoom(){const R=HOUSE,Wd=R.W;g.fillStyle='#4a3324';g.fillRect(-600,-900,Wd+1200,1100);
@@ -933,7 +937,40 @@ function drawLobby(){const z=RM.z,cam=RM.cam;g.fillStyle='#3e2a1e';g.fillRect(0,
   for(const o of list){if(o.pet){if(PET.kind!=='none'&&PET.ok){g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(PET.x,PET.y,15,5,0,0,TAU);g.fill();g.save();g.translate(PET.x,PET.y);g.scale(1.3,1.3);drawPet(g,0,0);g.restore()}}else if(o.hero){g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(h.x,h.y,17,6,0,0,TAU);g.fill();g.save();g.translate(h.x,h.y);g.scale(1.35,1.35);drawHero(g,0,0,RM.face,RM.ph,false);g.restore()}
     else{const s=o.s;g.save();g.translate(s.x,s.y);if(s.soon)g.globalAlpha=.78;STATION_DRAW[s.id](g);g.globalAlpha=1;drawTag(g,s);if(MOVE){g.strokeStyle=MOVE.d&&MOVE.d.s===s?'rgba(245,209,66,1)':'rgba(255,255,255,.75)';g.lineWidth=3;g.setLineDash([7,6]);g.lineDashOffset=-NOW/60;g.beginPath();g.ellipse(0,s.wall?30:6,46,14,0,0,TAU);g.stroke();g.setLineDash([])}if(RM.near===s&&!s.soon){const sp=standPt(s);g.strokeStyle='rgba(245,209,66,.95)';g.lineWidth=4;g.setLineDash([8,7]);g.lineDashOffset=-NOW/50;g.beginPath();g.ellipse(0,sp.y-s.y,30,11,0,0,TAU);g.stroke();g.setLineDash([])}g.restore()}}
   if(RM.tgt&&!RM.pend){g.strokeStyle='rgba(217,70,62,.8)';g.lineWidth=3;g.beginPath();g.arc(RM.tgt.x,RM.tgt.y,9+Math.sin(NOW/120)*2,0,TAU);g.stroke()}
+  if(RM===LOB)trnDraw(g,'studio');
   g.restore()}
+/* ================= THE HOBBY-SHOP TRAIN (Nov 23) =================
+   A little model train on a hanging track, like the ones that loop near the ceiling in train stores.
+   It runs along the studio's back wall, round the room above everyone's heads, out through a hole in the right wall,
+   round Little Town on stilts, and back in. Decoration only: no collisions, tap it to make it toot.
+   One clock (Date.now) drives it, so the studio, the town and Retro 3D all agree where it is.
+   TO SWAP THE TRAIN: change TRN.cars (colours) or trnCar (the drawing); Retro 3D builds its cars in r3d.js trn3dCar. */
+const TRN={sp:75,gap:38,cars:['#d9463e','#f5d142','#62b6e8','#63b35d']};
+function trnPath(k){if(k==='studio'){const W=LOB.W;return[[W+70,170],[24,170],[24,500],[W-24,500],[W-24,300],[W+70,300]]}
+  const s=TOWN.studio,ax=s.x+112,X=TW.W-50,Y=TW.H-60;return[[ax,s.y-50],[X-40,s.y-50],[X-40,Y],[60,Y],[60,110],[X,110],[X,s.y-90],[ax,s.y-90]]}
+function trnLen(P){let L=0;for(let i=1;i<P.length;i++)L+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);return L}
+function trnAt(P,d){for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;if(d<=l||i===P.length-1){const k=clamp(d/l,0,1);return{x:a[0]+(b[0]-a[0])*k,y:a[1]+(b[1]-a[1])*k,dx:(b[0]-a[0])/l,dy:(b[1]-a[1])/l,k:(i-1+k)}}d-=l}}
+/* where each car is now: [{i, k:'studio'|'town', d, f (0..1 along that path)}] */
+function trnCars(){const Ps=trnPath('studio'),Pt=trnPath('town'),Ls=trnLen(Ps),Lt=trnLen(Pt),T=Ls+Lt,h=(Date.now()/1000*TRN.sp)%T;
+  return TRN.cars.map((col,i)=>{let d=((h-i*TRN.gap)%T+T)%T;const k=d<Ls?'studio':'town';if(k==='town')d-=Ls;return{i,col,k,d,f:d/(k==='studio'?Ls:Lt)}})}
+function trnCar(c,col,eng,face){c.save();c.scale(face,1);c.fillStyle='rgba(0,0,0,.25)';c.fillRect(-15,-2,30,3);
+  c.fillStyle=col;rr(c,-15,-19,30,15,3);c.fill();c.strokeStyle='#6b4a34';c.lineWidth=2;c.stroke();
+  if(eng){c.fillStyle='#3b2f2a';c.fillRect(6,-29,6,11);c.fillStyle='#f6f2e9';rr(c,-15,-27,13,9,2);c.fill();c.stroke();c.fillStyle='#f5d142';c.beginPath();c.arc(15,-11,2.6,0,TAU);c.fill()}
+  else{c.fillStyle='rgba(255,255,255,.55)';c.fillRect(-10,-16,8,6);c.fillRect(2,-16,8,6)}
+  c.fillStyle='#3a3f4b';c.beginPath();c.arc(-8,-3,4,0,TAU);c.arc(8,-3,4,0,TAU);c.fill();c.restore()}
+function trnDraw(c,k){const P=trnPath(k),L=trnLen(P);c.save();
+  /* the track: painted-wood rails, with hangers (studio) or stilts (town) */
+  c.lineJoin='round';c.strokeStyle=k==='town'?'rgba(0,0,0,.13)':'rgba(0,0,0,0)';c.lineWidth=8;if(k==='town'){c.beginPath();P.forEach((p,i)=>i?c.lineTo(p[0],p[1]+46):c.moveTo(p[0],p[1]+46));c.stroke()}
+  c.strokeStyle='rgba(107,74,52,.55)';c.lineWidth=2;c.beginPath();for(let d=0;d<L;d+=150){const q=trnAt(P,d);if(k==='town'){c.moveTo(q.x,q.y);c.lineTo(q.x,q.y+46)}else if(q.y>180){c.moveTo(q.x,q.y-3);c.lineTo(q.x,q.y-130)}}c.stroke();if(k==='studio'){c.strokeStyle='rgba(0,0,0,.09)';c.lineWidth=9;c.beginPath();c.moveTo(40,650);c.lineTo(LOB.W-40,650);c.stroke()}
+  c.strokeStyle='#8b5a3c';c.lineWidth=7;c.beginPath();P.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.strokeStyle='#dcae70';c.lineWidth=2;c.stroke();
+  const port=(x,y,flip)=>{c.save();c.translate(x,y);c.scale(flip,1);c.fillStyle='#6b4a34';rr(c,-4,-34,26,40,8);c.fill();c.fillStyle='#22180f';rr(c,0,-30,22,32,7);c.fill();c.restore()};
+  if(k==='studio'){c.save();c.beginPath();c.rect(-50,-200,LOB.W+50,LOB.H+400);c.clip()}
+  for(const t of trnCars()){if(t.k!==k)continue;const q=trnAt(P,t.d);if(Math.abs(q.dx)>.3)TRN['f'+k+t.i]=q.dx>0?1:-1;c.save();c.translate(q.x,q.y);trnCar(c,t.col,t.i===0,TRN['f'+k+t.i]||1);
+    if(t.i===0&&Math.floor(Date.now()/450)%3===0){c.fillStyle='rgba(255,255,255,.7)';c.beginPath();c.arc(-(TRN['f'+k+'0']||1)*4+9*(TRN['f'+k+'0']||1),-34-(Date.now()%450)/30,4,0,TAU);c.fill()}c.restore()}
+  if(k==='studio'){c.restore();port(LOB.W-2,172,-1);port(LOB.W-2,302,-1)}else{port(P[0][0]-8,P[0][1]+2,1);port(P[P.length-1][0]-8,P[P.length-1][1]+2,1)}
+  c.restore()}
+function trnHit(w,k){const P=trnPath(k);for(const t of trnCars()){if(t.k!==k)continue;const q=trnAt(P,t.d);if(Math.abs(w.x-q.x)<26&&w.y<q.y+8&&w.y>q.y-34)return true}return false}
+function trnToot(){SFX.toot();toast('Toot toot! 🚂')}
 /* ================= ART CLASS: a learning tree, small steps first ================= */
 /* Each lesson is a list of steps. c = which tab to open, tl = which tool, f = fold type. Add branches and lessons here. */
 const CLASS=[

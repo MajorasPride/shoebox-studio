@@ -1,6 +1,6 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`; rollback copies moved to Google Drive on Nov 23)_
+_Last updated: Nov 23, 2026 (v1.6c live on `main`. Branch `studio-bigger-preview`: bigger studio + hobby-shop train, **waiting on his OK to merge to main**)_
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.
@@ -28,6 +28,16 @@ _Last updated: Nov 13, 2026 (v1.6c live: v1.6a + v1.6b + v1.6c merged to `main`;
 - Private preview: none for v1.4 or v1.6 (skipped on the owner's say-so, see the exceptions above). Make one for the next big update. The old v1.6a-only preview (https://claude.ai/artifact/VTxhaBaQ53PrajfmktvuPZ) is out of date.
 - Rollback copies (whole game, playable): moved off GitHub on Nov 23, 2026 to the Google Drive folder "GitHub Archive (Nov 23)" inside Master Game & Software (https://drive.google.com/drive/folders/1hF3Au0Y3PiZnFNmgsc4oRunDVCQ3MFdS) as `shoebox-studio_v1.4.zip` and `shoebox-studio_v1.5.2.zip`. They are also still in this repo's git history. To roll back the live site, unzip one and copy its `index.html` over `index.html` on `main` (the 3D files can stay; nothing loads them).
 - Tests: `Projects/tools/shoebox/test.js <label> [checks-file]` (Playwright, S23 Ultra 384x824 touch + 1920x1080, makes a real v1.5.2 save first). Check files: `checks-v16a.js`, `checks-v16b.js`, `checks-v16c.js`. Screenshots go to `Projects/screenshots/shoebox/<label>/`.
+
+## Bigger studio + hobby-shop train (branch `studio-bigger-preview`, Nov 23, 2026, NOT live)
+**Status: waiting on his OK to merge to main.** Private preview: PREVIEW_URL
+1. **The studio room is bigger**: 900 x 790 became **1400 x 1120** (about 2.2x the floor). Every station spread out (new spots in `STATIONS`), the pink rug, round window, roll-up screen and bunting moved to fit. The camera shows at most 1100 px of width before it follows you (`LOB.fw`), so on PC and phone the room scrolls instead of shrinking everything.
+2. **Three "new station spot" tape squares** on the floor (between the School Desk and Toy Chest, and in front of the rug) for stations still to come. Drawn in `drawLobbyRoom`.
+3. **Old saves**: stations moved with Move things are scaled from the old room to the new one (`stnLoad` uses `LOB.W0/H0`); new saves store the room size (`_w/_h`). Where-you-left-off, doors, Move things and Retro 3D all still work.
+4. **Hobby-shop train** (search "HOBBY-SHOP TRAIN"): a little painted-wood train (engine + 3 cars) on a hanging track, like the loops near the ceiling in train stores. It runs along the studio's back wall, comes down across the room above everyone, goes out through a hole in the right wall, loops round Little Town on stilts (around the edge of the table) and comes back in through the studio building's side. One clock (`Date.now`) drives it, so 2D studio, 2D town and Retro 3D agree where it is. Tap it: toot. It never blocks walking, stations or doors (no collisions). Built in code (Quaternius Train Pack not used: its models are realistic freight trains and heavier than a few boxes; it stays saved for a later game). To swap the train: `TRN.cars` (colours), `trnCar` (2D drawing), `trn3dCar` in `r3d.js` (3D).
+- Not changed: the house, other screens, the town layout (only the train track is added over it).
+- Tests (Playwright, headless Chrome, 824x384 phone landscape touch, 384x824 portrait, 1920x1080 PC, plus an old save with moved stations): walked to all 13 stations and the door with floor taps, door to town and back, School Desk opens, Move things saves and reloads, resume in studio, 3D studio and 3D town open and close, train moves, tapping the train toots, house size unchanged, no page errors. 114/114.
+- Not checked: his real phone, and how the train looks from every angle in 3D (in the 3D studio the train runs high on the walls, it can be out of view).
 
 ## What v1.6c added (built Nov 13, 2026 by Opus in Claude Code on the laptop)
 Code: `r3d.js` (the whole 3D view, an ES module) + `lib/three.module.min.js` (three.js r160, MIT, see CREDITS.md) + a small "v1.6c" block at the end of index.html's main script. The 3D files load only the first time you open 3D, so 2D is as light as before.
@@ -122,6 +132,10 @@ All of this is in `index.html`. Search for the comment titles below.
 - Book nooks: a later feature (tiny dioramas you make and slide between books). The bookshelf already has the gaps for them.
 
 ## Open questions (answer on a cheaper model)
+- **Bigger studio:** is 1400 x 1120 the right size? Examples: "good as is", "even bigger, like a gym", "a bit smaller, it feels empty".
+- **New station spots:** what goes on the three taped spots? Examples: "a clay table and a yarn loom", "the VHS spot for the projector", "leave them empty for now".
+- **The train:** swap in an engine from Little Paper Dinky 2.0 later? Examples: "yes, use the LPD 2.0 paper engines when they're ready", "keep this wooden one", "let me pick a train at the Supply Shop".
+- **The train's stops:** should it stop anywhere? Examples: "add a little station by the house", "it should carry my toys around", "no stops, it's just for looks".
 - **v1.6 (new):** Glow pieces light up as a whole (a soft halo). Should only the glow-pen lines glow instead? (Needs a second picture per piece, so bigger saves.)
 - **v1.6 (new):** The plan doc lists craft-material tags too (paper, clay, yarn, cardboard, realistic). Right now the Medium tag holds the drawing mediums plus the paper stock. Add material tags when clay and yarn crafting exist?
 - **v1.6 (new):** Retro 3D draws at about 640 px and scales up with chunky pixels. Keep that look, or sharper? Make a Level in 3D next, or the pet walking with you in 3D?
