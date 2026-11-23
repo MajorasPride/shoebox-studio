@@ -44,7 +44,12 @@ const MEDIUMS={
   glitter:{em:'✨',name:'Glitter pen',w:5,a:.55,wet:0,mix:'stack',press:[.8,1.25,1],sound:'marker',sparkle:1,glitters:1,
     steps:['Draw slowly so the sparkles spread out.','Use it for stars, crowns and treasure.','Glitter pieces twinkle in Little Town.']},
   glow:{em:'🌟',name:'Glow pen',w:6,a:.95,lift:.45,wet:0,mix:'stack',press:[.8,1.25,1],sound:'marker',aura:{a:.14,w:2.6},glows:1,
-    steps:['Glow pens draw a bright line with a soft halo.','Try them on black art paper.','Glow pieces light up in Little Town at night.']}};
+    steps:['Glow pens draw a bright line with a soft halo.','Try them on black art paper.','Glow pieces light up in Little Town at night.']},
+  /* Phase 2 (Nov 23): yarn and clay on the desk. Yarn lays a twisted strand; clay is thick, matte, soft and smears into the clay under it. */
+  yarn:{em:'🧶',name:'Yarn',w:9,a:1,grain:'twist',wet:0,mix:'stack',press:[.8,1.25,1],sound:'crayon',edge:{a:.32,w:1.25},shine:{a:.28,w:2,lift:.45,dx:-1.6,dy:-1.6},paper:{felt:{tooth:1.1},knit:{tooth:1.1}},
+    steps:['Lay the yarn down slowly in one long line, like gluing string.','Curl it round and round to fill a shape, like a snail shell.','Lay a second colour right next to the first so the strands touch.']},
+  clay:{em:'🟤',name:'Clay',w:13,a:1,grain:'clay',wet:.35,mix:'spectral',press:[.7,1.45,1],sound:'glue',edge:{a:.22,w:1.18},shine:{a:.2,w:3,lift:.5,dx:-2.5,dy:-2.5},paper:{clayslab:{spread:1.1},board:{tooth:1.1}},
+    steps:['Press the clay on with your thumb: it goes on thick and soft.','Smear one colour into another and they mix, like real clay.','Leave a few thumbprints. Clay looks best a little bumpy.']}};
 /* MEDIA is the old v1.6b name. It is the same list, kept so older code and saves keep working. */
 const MEDIA=MEDIUMS;
 const MCOLS=['#26221f','#e8443a','#f28a2e','#f7d23e','#5bbf5a','#2d8a57','#4fb3e8','#3767bb','#8b5cb6','#f38bb3','#8b5a3c','#ffffff'];
@@ -59,7 +64,10 @@ const STOCKS={
   black:{em:'🌑',name:'Black art paper',tip:'Made for chalk, gel pens and glow.',col:'#1f1f27'},
   trace:{em:'🪟',name:'Tracing paper',tip:'See-through. Lay it on top to copy.'},
   glit:{em:'💎',name:'Glitter card',tip:'Sparkles all over.'},
-  glowp:{em:'🌙',name:'Glow paper',tip:'Pale green. Glows in Little Town at night.',col:'#d8f5c2'}};
+  glowp:{em:'🌙',name:'Glow paper',tip:'Pale green. Glows in Little Town at night.',col:'#d8f5c2'},
+  felt:{em:'🟩',name:'Felt',tip:'Soft, fuzzy fabric. Great with yarn.'},
+  knit:{em:'🧣',name:'Knitted fabric',tip:'Little knit stitches, like a cosy sweater.'},
+  clayslab:{em:'🟫',name:'Clay slab',tip:'A rolled-out slab of clay. Press clay onto it.'}};
 const AB=Object.assign({med:'pencil',col:'#26221f',stock:'con'},LS.get('artbox',{}));
 if(!MEDIA[AB.med])AB.med='pencil';
 if(!STOCKS[AB.stock])AB.stock='con';
@@ -80,7 +88,11 @@ const GRAIN_PAINT={
   felt(x,S,R){x.fillStyle='#cfcfcf';x.fillRect(0,0,S,S);x.lineCap='round';for(let i=0;i<14000;i++){const px=R(0,S),py=R(0,S),a=R(0,7),l=R(3,9),v=(R(150,245))|0;x.strokeStyle='rgba('+v+','+v+','+v+',.35)';x.lineWidth=R(.6,1.4);x.beginPath();x.moveTo(px,py);x.quadraticCurveTo(px+R(-4,4),py+R(-4,4),px+Math.cos(a)*l,py+Math.sin(a)*l);x.stroke()}},
   knit(x,S,R){x.fillStyle='#9a9a9a';x.fillRect(0,0,S,S);const w=32,h=28;for(let j=0;j<S/h;j++)for(let i=0;i<S/w;i++){const cx=i*w+w/2,cy=j*h;for(const s of[-1,1]){const g=x.createLinearGradient(cx,cy,cx+s*w*.45,cy+h);g.addColorStop(0,'#e8e8e8');g.addColorStop(1,'#a8a8a8');x.fillStyle=g;x.beginPath();x.ellipse(cx+s*w*.24,cy+h*.55,w*.22,h*.62,s*-.5,0,7);x.fill();x.strokeStyle='rgba(0,0,0,.35)';x.lineWidth=1.5;x.stroke()}}},
   burlap(x,S,R){x.fillStyle='#a8a8a8';x.fillRect(0,0,S,S);for(let i=0;i<S;i+=10){const v=(R(170,230))|0;x.fillStyle='rgb('+v+','+v+','+v+')';x.fillRect(i+R(-1,1),0,R(5,7),S)}for(let j=0;j<S;j+=10)for(let i=0;i<S;i+=20){const v=(R(160,225))|0;x.fillStyle='rgb('+v+','+v+','+v+')';x.fillRect(i+((j/10)%2)*10,j+R(-1,1),10,R(5,7))}for(let i=0;i<1200;i++){x.strokeStyle='rgba(255,255,255,.18)';x.lineWidth=.7;const px=R(0,S),py=R(0,S);x.beginPath();x.moveTo(px,py);x.lineTo(px+R(-8,8),py+R(-8,8));x.stroke()}},
-  stitched(x,S,R){GRAIN_PAINT.felt(x,S,R);x.setLineDash([12,8]);x.strokeStyle='rgba(255,255,255,.85)';x.lineWidth=3.5;for(const y of[64,192,320,448]){x.beginPath();x.moveTo(0,y);for(let xx=0;xx<=S;xx+=64)x.lineTo(xx,y+Math.sin(xx*.05)*6);x.stroke()}x.setLineDash([]);for(let i=0;i<6;i++){const px=R(40,S-40),py=R(40,S-40);x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=3;for(const d of[-1,1]){x.beginPath();x.moveTo(px-9,py-9*d);x.lineTo(px+9,py+9*d);x.stroke()}}}};
+  stitched(x,S,R){GRAIN_PAINT.felt(x,S,R);x.setLineDash([12,8]);x.strokeStyle='rgba(255,255,255,.85)';x.lineWidth=3.5;for(const y of[64,192,320,448]){x.beginPath();x.moveTo(0,y);for(let xx=0;xx<=S;xx+=64)x.lineTo(xx,y+Math.sin(xx*.05)*6);x.stroke()}x.setLineDash([]);for(let i=0;i<6;i++){const px=R(40,S-40),py=R(40,S-40);x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=3;for(const d of[-1,1]){x.beginPath();x.moveTo(px-9,py-9*d);x.lineTo(px+9,py+9*d);x.stroke()}}},
+  /* Phase 2: the twisted ply of a yarn strand (light bands with dark grooves, on a slant) */
+  twist(x,S,R){x.fillStyle='#d8d8d8';x.fillRect(0,0,S,S);x.save();x.translate(S/2,S/2);x.rotate(-.75);for(let i=-S;i<S;i+=26){const g=x.createLinearGradient(i,0,i+26,0);g.addColorStop(0,'#8a8a8a');g.addColorStop(.25,'#f2f2f2');g.addColorStop(.7,'#c4c4c4');g.addColorStop(1,'#7a7a7a');x.fillStyle=g;x.fillRect(i,-S,26,S*2)}x.restore();for(let i=0;i<2600;i++){const v=(R(170,250))|0;x.strokeStyle='rgba('+v+','+v+','+v+',.35)';x.lineWidth=R(.5,1.1);const px=R(0,S),py=R(0,S);x.beginPath();x.moveTo(px,py);x.lineTo(px+R(-5,5),py+R(-5,5));x.stroke()}},
+  /* Phase 2: clay: matte and soft, with thumbprint dents and a few tool marks */
+  clay(x,S,R){x.fillStyle='#e2e2e2';x.fillRect(0,0,S,S);for(let i=0;i<60;i++){const px=R(0,S),py=R(0,S),r=R(14,46),g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,'rgba(150,150,150,.5)');g.addColorStop(1,'rgba(150,150,150,0)');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,7);x.fill()}for(let f=0;f<5;f++){const px=R(60,S-60),py=R(60,S-60),a=R(0,7);x.strokeStyle='rgba(120,120,120,.35)';x.lineWidth=1.6;for(let k=1;k<9;k++){x.beginPath();x.ellipse(px,py,k*3.2,k*2.4,a,0,7);x.stroke()}}for(let i=0;i<1800;i++){const v=(R(200,255))|0;x.fillStyle='rgba('+v+','+v+','+v+',.4)';x.fillRect(R(0,S),R(0,S),R(1,2.4),R(1,2.4))}}};
 /* a grain mask by name: the v1.6b ones are made at start-up (above); painter ones (512 px grey tiles) are shrunk to 128 px and their brightness becomes the mask */
 function grainMask(gk){grainInit();if(GRAIN[gk])return GRAIN[gk];const P=GRAIN_PAINT[gk];if(!P)return GRAIN.fine;const S=512,big=mkCanvas(S,S),r0=mulberry(2024+gk.length*31),R=(a,b)=>a+r0()*(b-a);P(big._x,S,R);
   const c=mkCanvas(128,128,true),x=c._x;x.drawImage(big,0,0,128,128);const d=x.getImageData(0,0,128,128);for(let i=0;i<d.data.length;i+=4){const v=(d.data[i]+d.data[i+1]+d.data[i+2])/3;d.data[i+3]=clamp((v-70)*1.5,0,255);d.data[i]=d.data[i+1]=d.data[i+2]=0}x.putImageData(d,0,0);return GRAIN[gk]=c}
@@ -125,6 +137,7 @@ function medSeg(c,m,col,pts,k,stock,B){const M=MEDIUMS[m]||MEDIUMS.pencil,real=!
   const path=(dx,dy)=>{c.beginPath();pts.forEach((q,i)=>i?c.lineTo(q.x+dx,q.y+dy):c.moveTo(q.x+dx,q.y+dy));if(pts.length===1)c.lineTo(pts[0].x+dx+.1,pts[0].y+dy)};
   const b=pts[pts.length-1],W0=M.w*k*tk;c.globalAlpha=Math.min(1,M.a*(real&&R&&R.tooth>1?clamp(1/R.tooth,.55,1):1)*(real&&M.mix==='spectral'&&B.s?1+B.s*1.3:1));c.lineWidth=W0*spread;c.strokeStyle=M.grain?grainPat(c,real&&R&&R.tooth>1.3&&M.grain==='fine'?'wax':M.grain,col):col;path(0,0);c.stroke();
   if(tip&&tip.flat){c.globalAlpha=tip.knife?.22:.12;c.lineWidth=Math.max(1,W0*.08);c.strokeStyle=tip.knife?'#fff':liftCol(col,.5);const n=pts.length>1?Math.atan2(b.y-pts[0].y,b.x-pts[0].x)+Math.PI/2:0;for(const o of[-.3,.05,.32]){path(Math.cos(n)*W0*o,Math.sin(n)*W0*o);c.stroke()}c.lineCap='round'}
+  if(M.edge){const E=M.edge,gc=c.globalCompositeOperation;c.globalCompositeOperation='destination-over';c.globalAlpha=E.a;c.lineWidth=W0*spread*E.w;c.strokeStyle='rgba(40,25,15,.9)';path(.6*k,.9*k);c.stroke();c.globalCompositeOperation=gc}/* Phase 2: yarn and clay sit on the paper with a soft dark edge */
   if(M.halo){c.globalAlpha=M.halo.a;c.lineWidth=W0*(M.halo.w+soak*.6);c.strokeStyle=col;path(0,0);c.stroke()}
   if(M.bloom&&Math.random()<M.bloom.p*(1+soak)){const r=W0*(.6+Math.random()*(M.bloom.r+soak*.6)),gr=c.createRadialGradient(b.x,b.y,0,b.x,b.y,r);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.75,col);gr.addColorStop(1,'rgba(0,0,0,0)');c.globalAlpha=M.bloom.a;c.fillStyle=gr;c.beginPath();c.arc(b.x,b.y,r,0,TAU);c.fill()}
   if(M.shine){const S=M.shine;c.globalAlpha=S.a;c.lineWidth=S.w*k;c.strokeStyle=S.lift?liftCol(col,S.lift):'#fff';path(S.dx*k,S.dy*k);c.stroke()}
@@ -147,6 +160,9 @@ function stockTex(art,sk,col,p){const x=art._x,W2=art.width,H2=art.height,R=mulb
   else if(sk==='black'){for(let i=0;i<W2*H2/60;i++){x.fillStyle='rgba(255,255,255,.04)';x.fillRect(R()*W2,R()*H2,1,1)}}
   else if(sk==='trace'){x.clearRect(0,0,W2,H2);x.fillStyle=liftCol(col,.35);x.globalAlpha=.62;x.fillRect(0,0,W2,H2);x.globalAlpha=1;x.fillStyle='rgba(255,255,255,.18)';x.fillRect(0,0,W2,H2)}
   else if(sk==='glit'){for(let i=0;i<W2*H2/55;i++){x.globalAlpha=.35+R()*.6;x.fillStyle=['#fff','#ffe9a8','#f9d5ff','#c9f1ff'][i&3];x.fillRect(R()*W2,R()*H2,1+R()*1.6,1+R()*1.6)}p.med.gl=1}
+  else if(sk==='felt'){x.globalAlpha=.16;x.fillStyle=grainPat(x,'felt','#000');x.fillRect(0,0,W2,H2);x.globalAlpha=.22;x.fillStyle=grainPat(x,'felt','#fff');x.translate(3,2);x.fillRect(-3,-2,W2,H2);x.translate(-3,-2);x.globalAlpha=1}
+  else if(sk==='knit'){x.globalAlpha=.26;x.fillStyle=grainPat(x,'knit','#000');x.fillRect(0,0,W2,H2);x.globalAlpha=1}
+  else if(sk==='clayslab'){x.globalAlpha=.2;x.fillStyle=grainPat(x,'clay','#000');x.fillRect(0,0,W2,H2);x.globalAlpha=1;x.strokeStyle='rgba(60,35,15,.25)';x.lineWidth=6;x.strokeRect(3,3,W2-6,H2-6)}
   else if(sk==='glowp'){x.fillStyle='rgba(255,255,255,.12)';x.fillRect(0,0,W2,H2);p.med.glow='#d8ffb0'}
   x.restore()}
 function stockPaper(color){const S=STOCKS[AB.stock]||STOCKS.con;return S.col||color}

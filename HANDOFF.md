@@ -1,6 +1,28 @@
 # Shoebox Studio: handoff notes
 
-_Last updated: Nov 13, 2026 (v1.6c live on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033), Creator Mode (T034), Physics and Water (T025) and the Medium engine with the file split (T024) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
+_Last updated: Nov 23, 2026 (Phase 2 done on `dev`: yarn and clay on the desk, see below. Nov 13 dev work (T020 to T025) now pushed to GitHub `dev`. Still nothing new live: v1.6c on `main`; VHS spot (T020), picture examples (T021), Art Swap (T022), 3D polish (T029), Supply Store (T032), Make it 3D (T033), Creator Mode (T034), Physics and Water (T025) and the Medium engine with the file split (T024) built on `dev` only, waiting for the owner's look; rollback copy of v1.5.2 in `/v1.5.2/`)_
+
+## Phase plan (set with the owner Nov 22-23, 2026; also on the Shoebox Studio tab of the Master Game & Software Ideas doc)
+1. Brainstorm (done Nov 23). 2. Fix the Nov 13 test notes (done on `dev` Nov 23, see the next section). 3. Living art: wobble pets (drawn and cut out, glued from paper shapes, or sculpted from clay), moving photo stickers, doll making, the Clay Table. 4. Town life: daily decoration shop, residents, events, town rating. 5. Memories: photo mode, photobooth, Polaroids, scrapbooks, memory books. 6. Big crafts: book nooks, ship in a bottle, houses you customize. 7. Nature: rivers, parks, beach and forest collecting. 8. Polish and first release. Add-ons (later): music, how players earn money.
+- Core rule (Nov 23): **2D and 3D is the whole idea for everything**: every craft can be made 2D or 3D (a lesson teaches each way), one button flips the view, and the world is a mixed diorama (2D paper pieces in a 3D world).
+- Decisions (Nov 22-23): buying is for random decorations (Animal Crossing style, daily rotating stock: things you can't craft, resident-made pieces, seasonal items, furniture sets). Craft supplies are free and unlock by finishing lessons. Pets follow you, wander town, have moods and help you. First lesson for new players: draw and cut out a paper pet, it comes alive in 2D, then pops into 3D.
+- Lessons are written with the `craft-lesson-maker` skill (owner's skill, Nov 22).
+
+## Phase 2: the Nov 13 test notes (done Nov 23, 2026 by Opus in chat; on `dev`, not live)
+His Nov 13 notes, and where each one is now:
+- Colours don't blend: done in T024 (spectral.js, Settings > Paint mixes).
+- Real art supplies on the desk, bottom toolbar kept as an option: done in T024 (Settings > Drawing tools: Real desk or Quick tools).
+- Retro 3D benches and stationary things turning to face you: done in T029 (only moving or living things turn; others keep a fixed facing with a Turn button).
+- Supply Store as its own building: done in T032.
+- His own default content kept separate from what players make: done in T034 (creator.html makes `content/default-pack.json`; no pack is in the repo yet).
+- **Yarn and clay textures: done now (Nov 23).**
+  1. Two new mediums in `MEDIUMS` (mediums.js): **Yarn** (🧶, twisted-ply strand, grain painter `twist`) and **Clay** (🟤, thick and matte with thumbprint dents, grain painter `clay`; it is wet paint, so it mixes into clay under it with spectral.js). New recipe option `edge` draws a soft dark edge under the strand so yarn and clay sit on the paper.
+  2. Three new papers in `STOCKS`: **Felt**, **Knitted fabric**, **Clay slab** (textures from the `felt`, `knit` and new `clay` grain painters).
+  3. Real desk (desk.js): a woven **yarn basket** (8 balls of yarn) and a **clay board** (8 lumps of clay) to the left of the paper (`DS_YARN`, `DS_CLAY`, kinds `yarn` and `clay` in `DS_LIST`). Every colour is its own ball or lump. A new Draw chip, **🧶 Yarn & clay**, jumps there and back, like 🖌️ Paints.
+  - Tests (Playwright, 384x824 touch and 1280x800): new mediums, papers and supplies exist; felt, knitted and clay slab sheets are placed; yarn and two clays picked from the desk draw on the paper and tag the piece; the Art box lists them; the chip moves the view; Quick tools hides the desk; home, town, house, toy box, class, level, kit and shop all open; no page errors. 42/42.
+  - Not checked: the owner's real phone, and how it feels.
+- **Q051 decided (Nov 23, builder's call, he can change it):** the T024 medium engine stays as the one blending and real-desk system. The `looks-test` branch is **not merged**: its blending and desk would double up. Ideas from it still worth taking later: the Blender-made desk art in Real/Toon/Pixel styles, the Pixel UI (Jersey 10 font), the mixing-palette wells, craft effects (splats, clay squish ring). The branch stays on GitHub as a reference.
+- The Clay Table (real 3D clay you shape, T041) is Phase 3, not Phase 2: today's clay is a drawing medium only.
 
 ## Vision
 - Shoebox Studio is the **one video game that holds everything**: you make game assets, levels, stories and music, and you make whole games, all inside it. The owner's other tools plug in as stations. Their working copies stay with Claude, and the game gets big updates when the owner says so.

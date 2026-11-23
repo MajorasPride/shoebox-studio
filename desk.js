@@ -289,6 +289,7 @@ function drawCraft(){const v=C.view,ct=C.ctr||deskCtr(),z=v.z;g.fillStyle='#5b3d
    {out:{id:[x,y,rot]} supplies lying on the desk, held: id in the hand, pal:{a,b,t,paint} the palette, bcol: paint on the brush, dirt:[r,g,b] old paint on a dirty brush, cup:[r,g,b] the water}.
    To add a supply: one more entry in DS_LIST (kind, medium, colour, home spot). */
 const DS_CR={x:-262,y:-446,w:288,h:118},DS_CUP={x:150,y:-331},DS_TRAY={x:-150,y:318,w:300,h:112},DS_PAL={x:420,y:-150,rx:122,ry:92},DS_REST={x:326,y:8,w:196,h:156},DS_WAT={x:420,y:268,r:52};
+const DS_YARN={x:-430,y:-150,rx:118,ry:84},DS_CLAY={x:-478,y:226,w:212,h:132};/* Phase 2 (Nov 23): yarn basket and clay board, to the left of the paper */
 const DS_TIPS={br_round:{k:1},br_flat:{k:1.7,flat:1},br_fine:{k:.35},knife:{k:1.8,flat:1,knife:1}};
 const DSV=Object.assign({out:{},held:null,pal:{a:'#3767bb',b:'#f7d23e',t:.5,paint:'poster'},bcol:null,dirt:null,cup:null},LS.get('desksupplies',{}));
 if(!DSV.out||typeof DSV.out!=='object')DSV.out={};
@@ -301,6 +302,9 @@ DS_LIST.push({id:'pencil',kind:'pencil',med:'pencil',col:'#26221f',name:'pencil'
 MCOLS.forEach((c,i)=>DS_LIST.push({id:'cpencil_'+i,kind:'pencil',med:'cpencil',col:c,name:'coloured pencil',len:92,grp:'cup',home:dsCupHome(i-5)}));
 MCOLS.forEach((c,i)=>DS_LIST.push({id:'marker_'+i,kind:'marker',med:'marker',col:c,name:'marker',len:96,grp:'tray',home:{x:DS_TRAY.x+13+i*24.9,y:DS_TRAY.y+9,r:0}}));
 [['br_round','round brush'],['br_flat','flat brush'],['br_fine','fine brush'],['knife','palette knife']].forEach((b,i)=>DS_LIST.push({id:b[0],kind:b[0]==='knife'?'knife':'brush',name:b[1],len:132,grp:'rest',home:{x:DS_REST.x+30+i*45,y:DS_REST.y+12,r:0}}));
+/* Phase 2: yarn balls in the basket and clay lumps on the board (every colour is its own ball or lump) */
+const DS_YC=[1,2,3,5,6,8,9,11];DS_YC.forEach((ci,i)=>DS_LIST.push({id:'yarn_'+ci,kind:'yarn',med:'yarn',col:MCOLS[ci],name:'ball of yarn',len:34,grp:'yarn',home:{x:DS_YARN.x-75+(i%4)*50,y:DS_YARN.y-62+Math.floor(i/4)*54,r:0}}));
+const DS_CC=[1,2,3,4,6,8,10,11];DS_CC.forEach((ci,i)=>DS_LIST.push({id:'clay_'+ci,kind:'clay',med:'clay',col:MCOLS[ci],name:'lump of clay',len:26,grp:'clay',home:{x:DS_CLAY.x+28+(i%4)*52,y:DS_CLAY.y+10+Math.floor(i/4)*54,r:0}}));
 if(DSV.held&&!DS_LIST.some(s=>s.id===DSV.held))DSV.held=null;
 const DS={back:null};
 function dsOn(){return SET.tools==='real'}
@@ -322,6 +326,8 @@ function dsItem(c,s,loadCol){const L=s.len,col=s.col;c.lineJoin='round';
   if(s.kind==='crayon'){c.fillStyle=col;c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1.2;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.lineTo(8,16);c.lineTo(8,L);c.lineTo(-8,L);c.lineTo(-8,16);c.closePath();c.fill();c.stroke();c.fillStyle='rgba(255,255,255,.55)';c.fillRect(-8,30,16,46);c.strokeStyle='rgba(0,0,0,.3)';c.strokeRect(-8,30,16,46);c.fillStyle=col;c.fillRect(-8,48,16,10);c.fillStyle='rgba(255,255,255,.25)';c.fillRect(-6,16,3,L-16)}
   else if(s.kind==='pencil'){const lead=s.med==='pencil'?'#3a3a42':col,body=s.med==='pencil'?'#f5d142':col;c.fillStyle='#e8c9a0';c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.beginPath();c.moveTo(0,0);c.lineTo(4.5,15);c.lineTo(-4.5,15);c.closePath();c.fill();c.stroke();c.fillStyle=lead;c.beginPath();c.moveTo(0,0);c.lineTo(1.9,6);c.lineTo(-1.9,6);c.closePath();c.fill();c.fillStyle=body;c.fillRect(-4.5,15,9,L-15);c.strokeRect(-4.5,15,9,L-15);c.fillStyle='rgba(255,255,255,.3)';c.fillRect(-3,15,2,L-15);if(s.med==='pencil'){c.fillStyle='#b9bcc2';c.fillRect(-4.5,L-13,9,5);c.fillStyle='#f191b3';c.fillRect(-4.5,L-8,9,8);c.strokeRect(-4.5,L-8,9,8)}}
   else if(s.kind==='marker'){c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1.2;c.fillStyle=col;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.lineTo(5,10);c.lineTo(-5,10);c.closePath();c.fill();c.stroke();rr(c,-9,10,18,34,4);c.fill();c.stroke();c.fillStyle='#f4f1ea';rr(c,-8,44,16,L-44,4);c.fill();c.stroke();c.fillStyle=col;c.fillRect(-8,60,16,8);c.fillStyle='rgba(255,255,255,.3)';c.fillRect(-6,12,3,30)}
+  else if(s.kind==='yarn'){/* a loose strand at the tip, the ball at the end */c.strokeStyle=col;c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(0,0);c.bezierCurveTo(7,8,-7,14,0,L-16);c.stroke();c.fillStyle=col;c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1.2;c.beginPath();c.arc(0,L,18,0,TAU);c.fill();c.stroke();c.save();c.beginPath();c.arc(0,L,18,0,TAU);c.clip();c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=2;for(let i=-3;i<=3;i++){c.beginPath();c.ellipse(0,L,22,7,.9+i*.08,0,TAU);c.stroke()}c.strokeStyle='rgba(0,0,0,.18)';for(let i=-2;i<=2;i++){c.beginPath();c.ellipse(0,L,20,6,-.7+i*.1,0,TAU);c.stroke()}c.restore()}
+  else if(s.kind==='clay'){/* a soft lump with a thumbprint */c.fillStyle=col;c.strokeStyle='rgba(0,0,0,.32)';c.lineWidth=1.2;c.beginPath();c.moveTo(0,0);c.bezierCurveTo(16,2,22,L*.7,16,L+6);c.bezierCurveTo(8,L+14,-12,L+14,-18,L+4);c.bezierCurveTo(-22,L*.6,-14,2,0,0);c.fill();c.stroke();c.strokeStyle='rgba(0,0,0,.15)';c.lineWidth=1;for(let k=1;k<4;k++){c.beginPath();c.ellipse(-2,L*.62,k*3,k*2.2,.4,0,TAU);c.stroke()}c.fillStyle='rgba(255,255,255,.28)';c.beginPath();c.ellipse(-7,L*.25,5,3,-.5,0,TAU);c.fill()}
   else if(s.kind==='brush'){const T=DS_TIPS[s.id],bw=T.flat?9:T.k<1?2.6:6,bl=T.flat?18:T.k<1?16:22,pc=loadCol||'#c9b79a';c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=1;c.fillStyle=pc;c.beginPath();if(T.flat){c.rect(-bw,0,bw*2,bl)}else{c.moveTo(0,0);c.quadraticCurveTo(bw*1.3,bl*.55,bw*.8,bl);c.lineTo(-bw*.8,bl);c.quadraticCurveTo(-bw*1.3,bl*.55,0,0)}c.fill();c.stroke();c.fillStyle='#b9bcc2';c.fillRect(-Math.max(3.4,bw*.8),bl,Math.max(6.8,bw*1.6),16);c.strokeRect(-Math.max(3.4,bw*.8),bl,Math.max(6.8,bw*1.6),16);c.fillStyle=s.id==='br_flat'?'#2f7d4f':s.id==='br_fine'?'#3767bb':'#d9463e';c.beginPath();c.moveTo(-4,bl+16);c.lineTo(4,bl+16);c.lineTo(2.4,L);c.lineTo(-2.4,L);c.closePath();c.fill();c.stroke()}
   else{c.strokeStyle='rgba(0,0,0,.4)';c.lineWidth=1;c.fillStyle=loadCol||'#d5dae0';c.beginPath();c.moveTo(0,0);c.lineTo(9,26);c.lineTo(3,56);c.lineTo(-3,56);c.lineTo(-9,26);c.closePath();c.fill();c.stroke();c.fillStyle='#b9bcc2';c.fillRect(-2.5,56,5,14);c.fillStyle='#8b5a3c';rr(c,-6,70,12,L-70,5);c.fill();c.stroke()}}
 function dsLoadCol(s){if(!dsIsBrush(s))return null;if(DSV.held===s.id&&(DSV.bcol||DSV.dirt))return DSV.dirt?rgbCss(smix(hexRGB(AB.col),DSV.dirt,.4)):AB.col;return null}
@@ -333,6 +339,9 @@ function dsDraw(c){if(!dsOn())return;c.save();c.lineJoin='round';
   B=DS_TRAY;c.fillStyle='rgba(0,0,0,.22)';rr(c,B.x+5,B.y+7,B.w,B.h,12);c.fill();c.fillStyle='#8fa3b5';rr(c,B.x,B.y,B.w,B.h,12);c.fill();c.strokeStyle='rgba(40,55,70,.7)';c.lineWidth=3;c.stroke();c.fillStyle='#5f7284';rr(c,B.x+7,B.y+5,B.w-14,B.h-10,8);c.fill();
   /* brush rest */
   B=DS_REST;c.fillStyle='rgba(0,0,0,.2)';rr(c,B.x+5,B.y+7,B.w,B.h,12);c.fill();c.fillStyle='#e9dcc0';rr(c,B.x,B.y,B.w,B.h,12);c.fill();c.strokeStyle='rgba(90,55,25,.6)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(90,55,25,.25)';c.fillRect(B.x+8,B.y+62,B.w-16,10);
+  /* Phase 2: yarn basket (woven) and clay board */
+  {const Y=DS_YARN;c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(Y.x+5,Y.y+8,Y.rx,Y.ry,0,0,TAU);c.fill();c.fillStyle='#c68f4e';c.beginPath();c.ellipse(Y.x,Y.y,Y.rx,Y.ry,0,0,TAU);c.fill();c.strokeStyle='rgba(90,55,25,.75)';c.lineWidth=3;c.stroke();c.save();c.beginPath();c.ellipse(Y.x,Y.y,Y.rx-8,Y.ry-8,0,0,TAU);c.clip();c.fillStyle='#8a5a2c';c.fillRect(Y.x-Y.rx,Y.y-Y.ry,Y.rx*2,Y.ry*2);c.strokeStyle='rgba(230,190,130,.5)';c.lineWidth=4;for(let i=-Y.rx;i<Y.rx;i+=14){c.beginPath();c.moveTo(Y.x+i,Y.y-Y.ry);c.lineTo(Y.x+i+10,Y.y+Y.ry);c.stroke()}c.restore()}
+  B=DS_CLAY;c.fillStyle='rgba(0,0,0,.22)';rr(c,B.x+5,B.y+7,B.w,B.h,12);c.fill();c.fillStyle='#e6cfa6';rr(c,B.x,B.y,B.w,B.h,12);c.fill();c.strokeStyle='rgba(90,55,25,.6)';c.lineWidth=3;c.stroke();c.strokeStyle='rgba(140,95,50,.2)';c.lineWidth=2;for(let i=10;i<B.h;i+=13){c.beginPath();c.moveTo(B.x+8,B.y+i);c.lineTo(B.x+B.w-8,B.y+i+3);c.stroke()}
   /* palette */
   const P=DS_PAL,pal=DSV.pal;c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(P.x+5,P.y+8,P.rx,P.ry,0,0,TAU);c.fill();c.fillStyle='#d8b07a';c.beginPath();c.ellipse(P.x,P.y,P.rx,P.ry,0,0,TAU);c.fill();c.strokeStyle='rgba(90,55,25,.7)';c.lineWidth=3;c.stroke();c.fillStyle='#5b3d2b';c.beginPath();c.ellipse(P.x-74,P.y+38,17,13,0,0,TAU);c.fill();
   const blob=(x,y,r,col)=>{c.fillStyle=col;c.beginPath();c.ellipse(x,y,r,r*.8,0,0,TAU);c.fill();c.fillStyle='rgba(255,255,255,.3)';c.beginPath();c.ellipse(x-r*.3,y-r*.3,r*.3,r*.18,-.6,0,TAU);c.fill()};
@@ -346,6 +355,8 @@ function dsDraw(c){if(!dsOn())return;c.save();c.lineJoin='round';
   DS_LIST.forEach(s=>{if(s.grp!=='cup'||DSV.out[s.id])one(s)});
   /* front lips, so things look tucked in */
   B=DS_CR;c.fillStyle='#f0b429';rr(c,B.x,B.y+B.h-38,B.w,38,10);c.fill();c.strokeStyle='rgba(90,55,25,.7)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(60,35,15,.8)';c.font='900 17px system-ui';c.fillText('CRAYONS',B.x+B.w/2,B.y+B.h-18);
+  {const Y=DS_YARN;c.fillStyle='#c68f4e';c.beginPath();c.ellipse(Y.x,Y.y+Y.ry-14,Y.rx-6,20,0,0,Math.PI);c.fill();c.strokeStyle='rgba(90,55,25,.75)';c.lineWidth=3;c.stroke();c.fillStyle='rgba(60,35,15,.85)';c.font='900 17px system-ui';c.fillText('YARN',Y.x,Y.y+Y.ry-2)}
+  B=DS_CLAY;c.fillStyle='rgba(60,35,15,.8)';c.font='900 17px system-ui';c.fillText('CLAY',B.x+B.w/2,B.y+B.h-12);
   B=DS_TRAY;c.fillStyle='#8fa3b5';rr(c,B.x,B.y+B.h-30,B.w,30,12);c.fill();c.strokeStyle='rgba(40,55,70,.7)';c.stroke();c.fillStyle='rgba(25,40,55,.8)';c.fillText('MARKERS',B.x+B.w/2,B.y+B.h-14);
   c.restore()}
 /* the supply in the hand: drawn on top of everything, with the Player Hand holding it */
@@ -360,13 +371,13 @@ function dsHit(w){const z=C.view.z,near=14+10/z;let best=null,bd=1e9;
   if(dist(w,DS_WAT)<DS_WAT.r+6)return{cup:1};
   return null}
 /* how far apart the supplies in a holder are, in screen pixels: too close and the first tap zooms in instead */
-function dsCrowd(s){if(DSV.out[s.id])return 99;const sp={cr:22.7,cup:11,tray:24.9,rest:45}[s.grp];return sp*C.view.z}
+function dsCrowd(s){if(DSV.out[s.id])return 99;const sp={cr:22.7,cup:11,tray:24.9,rest:45,yarn:50,clay:52}[s.grp];return sp*C.view.z}
 function dsDown(w,gh,t){if(!dsOn()||gh||topPieceAt(w.x,w.y))return false;const h=dsHit(w);
   if(!h){if(DSV.held&&t==='pencil'){dsPutDown(w);return true}return false}
   auInit();
   if(h.pal){paletteDlg();return true}
   if(h.cup){dsRinse();return true}
-  const s=h.s;if(dsCrowd(s)<27){DS.back={x:C.view.x,y:C.view.y,z:C.view.z};const p=s.home,sp={cr:22.7,cup:11,tray:24.9,rest:45}[s.grp];C.view.z=clamp(32/sp,1,3);C.view.x=clamp(w.x,-560,560);C.view.y=p.y+s.len*.45;toast('Tap the '+s.name+' you want');SFX.tick();return true}
+  const s=h.s;if(dsCrowd(s)<27){DS.back={x:C.view.x,y:C.view.y,z:C.view.z};const p=s.home,sp={cr:22.7,cup:11,tray:24.9,rest:45,yarn:50,clay:52}[s.grp];C.view.z=clamp(32/sp,1,3);C.view.x=clamp(w.x,-560,560);C.view.y=p.y+s.len*.45;toast('Tap the '+s.name+' you want');SFX.tick();return true}
   dsPick(s);return true}
 function dsPick(s){DSV.held=s.id;delete DSV.out[s.id];
   if(dsIsBrush(s)){AB.med=s.kind==='knife'?'poster':DSV.pal.paint;AB.col=dsPalCol()}else{AB.med=s.med;AB.col=s.col;}
@@ -390,6 +401,8 @@ function dsLoadBrush(){let s=dsHeld();if(!dsIsBrush(s)){s=dsById('br_round');DSV
   toast(DSV.dirt?'The brush still has old paint on it. It tints the new colour until you dip it in the water cup.':'Paint is on the '+s.name+'. Paint on the paper.')}
 /* Draw tab chip: jump to the painting kit and back */
 function dsPaintsChip(box){const b=document.createElement('button'),at=C.view.x>250;b.className='chip'+(at?' on':'');b.innerHTML='🖌️<small>'+(at?'Paper':'Paints')+'</small>';b.onclick=()=>{auInit();SFX.tick();if(C.view.x>250)fitDesk();else{C.view.x=420;C.view.y=46;C.view.z=clamp(Math.min((W-14)/300,((C.ctr||deskCtr()).h-8)/650),.35,1.6)}renderChips()};box.append(b)}
+/* Phase 2: Draw tab chip: jump to the yarn basket and clay board (left of the paper) and back */
+function dsCraftChip(box){const b=document.createElement('button'),at=C.view.x<-250;b.className='chip'+(at?' on':'');b.innerHTML='🧶<small>'+(at?'Paper':'Yarn & clay')+'</small>';b.onclick=()=>{auInit();SFX.tick();if(C.view.x<-250)fitDesk();else{C.view.x=-430;C.view.y=40;C.view.z=clamp(Math.min((W-14)/300,((C.ctr||deskCtr()).h-8)/650),.35,1.6)}renderChips()};box.append(b)}
 /* S Pen: perfect-freehand (MIT, lib/perfect-freehand.js) smooths the line and its pressure; the recipe's press curve turns pressure into width */
 function drawStart(st,e,t){st.B=t==='pencil'?strokeStart(AB.med,AB.col,st.p.color,dsTip(),dsDirt()):null;if(t==='pencil'&&e&&e.pointerType==='pen'&&!st.snap&&typeof perfectFreehand!=='undefined'){const pr=e.pressure>0?e.pressure:.5;st.pen={pts:[[st.last.x,st.last.y,pr]],n:1};st.pk=pressK(AB.med,pr)}}
 function drawFree(st,l,e){if(!st.pen){drawSeg(st,st.last?[st.last,l]:[l]);return}const P=st.pen;if(!st.last){P.pts=[];P.n=1}P.pts.push([l.x,l.y,e&&e.pressure>0?e.pressure:.5]);if(P.pts.length>=3)penFlush(st,false)}
@@ -413,7 +426,7 @@ function setHint(t){$('#hint').textContent=t}
 function renderTabs(){const tabs=$('#tabs');tabs.innerHTML='';CATS.forEach(c=>{const b=document.createElement('button');b.className='tab'+(C.cat===c.id?' on':'');b.innerHTML=c.em+'<small>'+c.name+'</small>';b.onclick=()=>{auInit();SFX.tick();if(c.id==='done'){actToyBox();return}C.cat=c.id;C.tool=c.tool;renderTabs()};tabs.append(b)});renderChips()}
 function renderChips(){const box=$('#chips');box.innerHTML='';
   if(C.cat==='paper'){{const S=STOCKS[AB.stock],b=document.createElement('button');b.className='chip';b.innerHTML=S.em+'<small>'+S.name.split(' ')[0]+' ▾</small>';b.onclick=()=>{auInit();SFX.tick();stockDlg()};box.append(b)}/* v1.6b: paper stock */(STOCKS[AB.stock].col?[STOCKS[AB.stock].col]:PAPERS).forEach(col=>{const b=document.createElement('button');b.className='chip sw'+(C.color===col?' on':'');b.style.background=col;b.setAttribute('aria-label','paper');b.onclick=()=>{auInit();placePaper(col);renderChips()};box.append(b)});setHint(HINTS.paper);return}
-  if(C.cat==='draw'){const b=document.createElement('button');b.className='chip';b.innerHTML='🎨<small>Art box</small>';b.onclick=()=>{auInit();SFX.tick();artBoxDlg()};box.append(b);if(dsOn())dsPaintsChip(box)/* T024 */}/* v1.6b */
+  if(C.cat==='draw'){const b=document.createElement('button');b.className='chip';b.innerHTML='🎨<small>Art box</small>';b.onclick=()=>{auInit();SFX.tick();artBoxDlg()};box.append(b);if(dsOn()){dsPaintsChip(box);dsCraftChip(box)}/* T024, Phase 2 */}/* v1.6b */
   (CHIPS[C.cat]||[]).forEach(ch=>{const b=document.createElement('button');const on=ch.tool?C.tool===ch.tool:ch.fold?C.tool==='fold'&&C.foldType===ch.fold:ch.guide?C.guides.some(G=>G.type===ch.guide&&(!ch.shape||G.shape===ch.shape)):false;b.className='chip'+(on?' on':'');b.innerHTML=ch.tool==='pencil'?MEDIA[AB.med].em+'<small style="border-bottom:3px solid '+(MEDIA[AB.med].fixed||AB.col)+'">'+MEDIA[AB.med].name.split(' ')[0]+'</small>':(ch.svg||ch.em)+'<small>'+ch.name+'</small>';
     b.onclick=()=>{auInit();if(ch.tool){C.tool=ch.tool;SFX.tick()}else if(ch.fold){C.tool='fold';C.foldType=ch.fold;SFX.tick()}else if(ch.guide){if(toggleGuide(ch.guide,ch.shape))C.tool='pencil'}else if(ch.act)ch.act();renderChips()};box.append(b)});
   setHint(HINTS[C.tool]||'')}
